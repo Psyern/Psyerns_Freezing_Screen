@@ -1,15 +1,19 @@
-# DME_Cold - Frost Overlay Mod for DayZ
+# DME_Cold - Frost, Toxic & Blood Overlay Mod for DayZ
 
-A DayZ mod that adds a visual frost/ice overlay effect based on the player's body temperature.
+A DayZ mod that adds visual overlay effects based on the player's body temperature, toxicity level, and blood loss.
 
 ## Features
 
 - **7 Progressive Frost Levels**: As the player gets colder, the screen progressively shows more frost
-- **Smooth Transitions**: Frost fades in and out smoothly based on temperature changes
-- **Temperature-Based**: Uses player's heat comfort combined with environment temperature
+- **7 Progressive Toxic Levels**: Toxic zone contamination shows green overlay effect
+- **7 Progressive Blood Levels**: Blood loss shows red vignette overlay effect
+- **Smooth Transitions**: Effects fade in and out smoothly based on stat changes
+- **Temperature-Based Frost**: Uses player's HeatComfort stat for realistic cold feeling
+- **Toxicity-Based Poison**: Uses player's Toxicity stat for gas zone effects
+- **Blood Loss Detection**: Uses player's Blood stat for injury visualization
 - **Native DayZ Widgets**: Built using native DayZ widget system (no external dependencies!)
 - **Server-Controlled Config**: Configuration is stored on server and synced to clients automatically
-- **Configurable**: Server admins can customize temperature thresholds
+- **Configurable**: Server admins can customize thresholds for both effects
 
 ## Requirements
 
@@ -26,7 +30,7 @@ A DayZ mod that adds a visual frost/ice overlay effect based on the player's bod
 
 The configuration file is stored **on the server only** at:
 ```
-profiles/DeadmansEcho/DME_Cold_Config.json
+profiles/DeadmansEcho/DME_Overlay.json
 ```
 
 **Important:** The config is automatically synced from server to all clients when they connect. Clients do NOT need their own config file - they receive all settings from the server.
@@ -35,9 +39,13 @@ profiles/DeadmansEcho/DME_Cold_Config.json
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| EnableFrostEffect | true | Enable/disable the frost effect |
+| **EnableFrostEffect** | true | **Enable/disable the frost overlay** |
+| **EnableToxicEffect** | true | **Enable/disable the toxic overlay** |
+| **EnableBloodEffect** | true | **Enable/disable the blood loss overlay** |
 | **DebugEnabled** | false | **Enable debug logging (shows values in log)** |
 | **DebugForceFrostLevel** | 0 | **Force a specific frost level (0=off, 1-7=force)** |
+| **DebugForceToxicLevel** | 0 | **Force a specific toxic level (0=off, 1-7=force)** |
+| **DebugForceBloodLevel** | 0 | **Force a specific blood level (0=off, 1-7=force)** |
 | **DebugLogTemperature** | false | **Log temperature values to console** |
 | FrostLevel0Threshold | 35.0 | Temperature above which no frost appears |
 | FrostLevel1Threshold | 34.0 | Temperature for light frost |
@@ -47,23 +55,40 @@ profiles/DeadmansEcho/DME_Cold_Config.json
 | FrostLevel5Threshold | 30.0 | Temperature for level 5 frost |
 | FrostLevel6Threshold | 29.0 | Temperature for level 6 frost |
 | FrostLevel7Threshold | 28.0 | Temperature for maximum frost |
-| TransitionSpeed | 2.0 | How fast frost appears/disappears (higher = faster) |
+| TransitionSpeed | 2.0 | How fast frost fades in/out |
 | MinAlpha | 0.1 | Minimum opacity when frost starts |
 | MaxAlpha | 0.85 | Maximum opacity of frost overlay (0.0-1.0) |
+| ToxicLevel0-7Threshold | 0-100 | Toxicity percentage thresholds |
+| ToxicTransitionSpeed | 2.0 | How fast toxic fades in/out |
+| ToxicMinAlpha | 0.1 | Minimum opacity when toxic starts |
+| ToxicMaxAlpha | 0.75 | Maximum opacity of toxic overlay |
+| BloodLevel0-7Threshold | 5000-500 | Blood thresholds (see below) |
+| BloodTransitionSpeed | 2.0 | How fast blood fades in/out |
+| BloodMinAlpha | 0.1 | Minimum opacity when blood loss starts |
+| BloodMaxAlpha | 0.8 | Maximum opacity of blood overlay |
 
 ## Debug Mode
 
 Set `DebugEnabled` to `true` in the config to see debug output in the log every 2 seconds:
 ```
-[DME_Cold DEBUG] =====================
-[DME_Cold DEBUG] Heat Comfort: -0.5
-[DME_Cold DEBUG] Effective Temp: 31.5C
-[DME_Cold DEBUG] Frost Level: 4/7
-[DME_Cold DEBUG] Alpha: 0.65
-[DME_Cold DEBUG] Forced Level: 0
+[DME_Cold] DEBUG: HeatComfort(raw)=-15.5 HeatBuffer=0.0 HeatStage=1 -> Normalized=-0.52 Toxicity=0.0 Blood=4500.0
+[DME_Cold] HeatComfort(raw): -15.5 HeatBuffer: 0.0 Used: -0.52 Temp: 31.4 FrostFloat: 3.6 Alpha: 0.42
 ```
 
+**Debug values explained:**
+- `HeatComfort(raw)`: The raw HeatComfort stat (-30 to +30)
+- `HeatBuffer`: The raw HeatBuffer stat (changes quickly near fire)
+- `HeatStage`: The discrete heat stage (0-4, fallback)
+- `Normalized`: HeatComfort divided by 30 (-1.0 to +1.0)
+- `Temp`: Calculated effective temperature in °C
+- `FrostFloat`: Current frost level as float (0.0-7.0)
+- `Alpha`: Current overlay opacity (0.0-1.0)
+- `Toxicity`: Contamination level (0-100)
+- `Blood`: Current blood level (0-5000)
+
 Set `DebugForceFrostLevel` to 1-7 to force a specific frost level for testing.
+Set `DebugForceToxicLevel` to 1-7 to force a specific toxic level for testing.
+Set `DebugForceBloodLevel` to 1-7 to force a specific blood level for testing.
 
 ## How It Works
 
@@ -108,14 +133,83 @@ The mod uses a modular architecture across DayZ script modules:
 
 ### Heat Detection
 
-The mod monitors the player's heat state using:
+The mod monitors the player's temperature using DayZ's native stat system:
+
+**HeatComfort** (Primary - used for frost level):
+- Range: -30 to +30 (normalized to -1.0 to +1.0)
+- **Negative values = Cold** → Frost appears
+- **Zero = Neutral** → No frost
+- **Positive values = Warm** → No frost
+- Changes **slowly** (realistic body temperature)
+- This is the "felt" temperature that determines frost level
+
+**HeatBuffer** (Secondary - informational):
+- Range: -30 to +30
+- Changes **quickly** near heat sources (fire, warm buildings)
+- Affects how fast HeatComfort changes
+- Only shown in debug display
+
+**HeatBufferStage** (Fallback):
+- Discrete stages 0-4 (freezing to hot)
+- Used only if HeatComfort stat is not available
+
 ```
-PlayerBase.GetHeatBufferStage() returns:
-  0 = Very Cold  (-1.0 comfort)
-  1 = Cold       (-0.5 comfort)
-  2 = Normal     (0.0 comfort)
-  3 = Hot        (0.5 comfort)
-  4+ = Very Hot  (1.0 comfort)
+HeatComfort (raw) → Normalized → Effective Temp → Frost Level
+     -30          →   -1.0     →    28°C        →    7 (max)
+     -15          →   -0.5     →    31.5°C      →    ~3-4
+       0          →    0.0     →    35°C        →    0 (none)
+     +15          →   +0.5     →    38.5°C      →    0 (none)
+     +30          →   +1.0     →    42°C        →    0 (none)
+```
+
+### Toxicity Detection (Toxic Zones)
+
+The mod monitors the player's toxicity level for gas zone effects:
+
+**Toxicity** (Primary - used for toxic overlay):
+- Range: 0 to 100 (percentage)
+- **0 = No contamination** → No overlay
+- **1-100 = Contaminated** → Green toxic overlay appears
+- Increases when in toxic zones without proper protection
+- Decreases slowly when leaving toxic zones
+
+```
+Toxicity (raw) → Toxic Level → Overlay
+     0         →    0        → None
+    14         →    1        → Light green tint
+    28         →    2        → Moderate
+    42         →    3        → Noticeable
+    57         →    4        → Strong
+    71         →    5        → Heavy
+    85         →    6        → Severe
+   100         →    7        → Maximum (near death)
+```
+
+### Blood Loss Detection
+
+The mod monitors the player's blood level for injury visualization:
+
+**Blood** (Primary - used for blood overlay):
+- Range: 0 to 5000 (5000 = full blood)
+- **5000 = Full blood** → No overlay
+- **Below 5000 = Blood loss** → Red overlay appears
+- Decreases when injured/bleeding
+- Increases when eating, resting, or using blood bags
+
+**Blood Thresholds (non-linear distribution):**
+- Level 1-3: Larger ranges (~800 each) - moderate blood loss
+- Level 4-7: Smaller ranges (~250-700 each) - severe blood loss
+
+```
+Blood (raw)  → Blood Level → Overlay
+   5000      →    0        → None (full health)
+   4200      →    1        → Light red tint
+   3400      →    2        → Moderate
+   2500      →    3        → Noticeable
+   1700      →    4        → Serious
+   1000      →    5        → Severe
+    750      →    6        → Critical
+    500      →    7        → Maximum (near death)
 ```
 
 ### Widget System
@@ -144,11 +238,27 @@ DME_Cold/
 │       ├── Freeze5.paa                     # Frost overlay level 5
 │       ├── Freeze6.paa                     # Frost overlay level 6
 │       ├── Freeze7.paa                     # Frost overlay level 7 (heaviest)
+│       ├── toxic1.paa                      # Toxic overlay level 1 (lightest green)
+│       ├── toxic2.paa                      # Toxic overlay level 2
+│       ├── toxic3.paa                      # Toxic overlay level 3
+│       ├── toxic4.paa                      # Toxic overlay level 4
+│       ├── toxic5.paa                      # Toxic overlay level 5
+│       ├── toxic6.paa                      # Toxic overlay level 6
+│       ├── toxic7.paa                      # Toxic overlay level 7 (heaviest)
+│       ├── blood1.paa                      # Blood overlay level 1 (lightest red)
+│       ├── blood2.paa                      # Blood overlay level 2
+│       ├── blood3.paa                      # Blood overlay level 3
+│       ├── blood4.paa                      # Blood overlay level 4
+│       ├── blood5.paa                      # Blood overlay level 5
+│       ├── blood6.paa                      # Blood overlay level 6
+│       ├── blood7.paa                      # Blood overlay level 7 (heaviest)
 │       └── README.txt                      # Texture info
 │
 └── Scripts/
     ├── 3_Game/                             # Game-level scripts (loads first)
-    │   ├── A_DME_ColdFrostOverlay.c        # Core overlay widget logic
+    │   ├── A_DME_BloodOverlay.c            # Blood loss overlay widget logic
+    │   ├── A_DME_ColdFrostOverlay.c        # Frost overlay widget logic
+    │   ├── A_DME_ToxicOverlay.c            # Toxic overlay widget logic
     │   ├── DME_Cold.c                      # Module registration
     │   ├── DME_ColdConfig.c                # Configuration management & RPC serialization
     │   └── DME_ColdRPC.c                   # RPC constants for server-client sync
@@ -203,10 +313,12 @@ DME_Cold/
 | Issue | Solution |
 |-------|----------|
 | "Waiting for config" forever | Check server is sending RPC, check mod is in both server AND client mods |
-| No frost at normal temp | Working as intended! Frost only shows when Heat Buffer Stage < 2 |
+| No frost at normal temp | Working as intended! Frost only shows when HeatComfort < 0 |
+| Frost shows when warm | Check HeatComfort values in debug log, may need to adjust thresholds |
 | Always same frost image | Make sure Freeze1-7.paa exist in GUI/textures/ |
 | Overlay blocks UI | Check Z-order in CreateOverlay(), should be negative |
 | Config changes not applied | Restart server (config syncs on player connect) |
+| Transitions too fast/slow | Adjust TransitionSpeed in config (lower = slower) |
 
 ## Credits
 
@@ -220,6 +332,9 @@ MIT License - See LICENSE file for details
 
 ## Version History
 
+- **v2.4** (2025-12-15): Added Blood loss overlay (7 levels, non-linear thresholds)
+- **v2.3** (2025-12-15): Added Toxicity overlay for toxic zones (7 levels)
+- **v2.2** (2025-12-15): Fixed HeatComfort/HeatBuffer system, smooth float-based frost transitions
 - **v2.1** (2025-12-11): Added server→client config sync via RPC, 7 frost image levels
 - **v2.0** (2025-12-10): Complete rewrite using native DayZ widgets, no sFramework dependency
 - **v1.0** (original): sFramework-based version (archived)

@@ -10,14 +10,11 @@ class DME_ColdFrostOverlay
     protected ImageWidget m_FrostImage;
     protected float m_CurrentAlpha;
     protected float m_TargetAlpha;
-    protected int m_CurrentFrostLevel;
-    protected int m_TargetFrostLevel;
+    protected float m_CurrentFrostLevelFloat;  // Smooth float value for transitions
     protected int m_CurrentImageLevel;  // Track which image is currently loaded
     protected float m_DebugLogTimer;
     protected const float DEBUG_LOG_INTERVAL = 2.0;
     protected bool m_IsInitialized;
-    protected float m_FrostLevelChangeTimer;  // Timer for smooth frost level transitions
-    protected const float FROST_LEVEL_CHANGE_DELAY = 1.0;  // Seconds between frost level changes
     
     // Debug UI elements
     protected Widget m_DebugWidget;
@@ -33,11 +30,9 @@ class DME_ColdFrostOverlay
         m_IsInitialized = false;
         m_CurrentAlpha = 0.0;
         m_TargetAlpha = 0.0;
-        m_CurrentFrostLevel = 0;
-        m_TargetFrostLevel = 0;
+        m_CurrentFrostLevelFloat = 0.0;
         m_CurrentImageLevel = 0;
         m_DebugLogTimer = 0.0;
-        m_FrostLevelChangeTimer = 0.0;
         m_LastHeatComfort = 0.0;
         m_LastEffectiveTemp = 35.0;
         m_LastHeatStage = 2;
@@ -121,7 +116,7 @@ class DME_ColdFrostOverlay
         }
     }
     
-    void UpdateDebugDisplay(float heatComfort, int heatStage, float heatBufferRaw = -1.0)
+    void UpdateDebugDisplay(float heatComfort, int heatStage, float heatBufferRaw = -1.0, float heatComfortRaw = -999.0)
     {
         if (!m_DebugText)
         {
@@ -148,12 +143,12 @@ class DME_ColdFrostOverlay
         m_LastEffectiveTemp = CalculateEffectiveTemperature(heatComfort);
         m_LastHeatBufferRaw = heatBufferRaw;
         
-        // Build compact single-line debug text
-        string debugText = "[DME] Buf:" + FormatFloat(m_LastHeatBufferRaw, 0);
-        debugText += " Stg:" + m_LastHeatStage.ToString();
-        debugText += " Cmf:" + FormatFloat(m_LastHeatComfort, 2);
+        // Build compact single-line debug text showing BOTH stats
+        // HC = HeatComfort (the real one!), HB = HeatBuffer
+        string debugText = "[DME] HC:" + FormatFloat(heatComfortRaw, 2);
+        debugText += " HB:" + FormatFloat(m_LastHeatBufferRaw, 1);
         debugText += " Tmp:" + FormatFloat(m_LastEffectiveTemp, 1);
-        debugText += " Fst:" + m_CurrentFrostLevel.ToString() + "/" + m_TargetFrostLevel.ToString();
+        debugText += " Fst:" + FormatFloat(m_CurrentFrostLevelFloat, 1);
         debugText += " A:" + FormatFloat(m_CurrentAlpha, 2);
         
         m_DebugText.SetText(debugText);
@@ -262,7 +257,7 @@ class DME_ColdFrostOverlay
         CreateOverlay();
     }
     
-    void Update(float deltaTime, float playerHeatComfort, int heatStage = 2, float heatBufferRaw = -1.0)
+    void Update(float deltaTime, float playerHeatComfort, int heatStage = 2, float heatBufferRaw = -1.0, float heatComfortRaw = -999.0)
     {
         if (!m_IsInitialized || !m_FrostImage)
             return;
@@ -278,30 +273,36 @@ class DME_ColdFrostOverlay
             if (m_CurrentAlpha > 0)
             {
                 m_CurrentAlpha = 0;
+                m_CurrentFrostLevelFloat = 0;
                 ApplyAlpha();
             }
             return;
         }
         
-        // Calculate target frost level
-        UpdateFrostLevel(playerHeatComfort, deltaTime);
+        // Calculate target frost level (as float for smooth transitions)
+        float targetFrostLevel = CalculateTargetFrostLevel(playerHeatComfort, config);
         
-        // Update frost image based on level (switch between Freeze1-7.paa)
-        UpdateFrostImage();
+        // Smoothly interpolate frost level using TransitionSpeed
+        float diff = targetFrostLevel - m_CurrentFrostLevelFloat;
+        m_CurrentFrostLevelFloat += diff * deltaTime * config.TransitionSpeed;
         
-        // Calculate target alpha based on frost level
-        UpdateTargetAlpha();
+        // Clamp to valid range
+        m_CurrentFrostLevelFloat = Math.Clamp(m_CurrentFrostLevelFloat, 0.0, 7.0);
         
-        // Smoothly interpolate current alpha to target
-        UpdateAlpha(deltaTime);
+        // Update frost image based on rounded level
+        int roundedFrostLevel = Math.Round(m_CurrentFrostLevelFloat);
+        UpdateFrostImage(roundedFrostLevel);
         
-        // Apply alpha to widget using SetColor (more reliable than SetAlpha)
+        // Calculate alpha directly from the float frost level (smooth!)
+        UpdateAlphaFromFrostLevel(config);
+        
+        // Apply alpha to widget
         ApplyAlpha();
         
         // Update debug display (if enabled)
         if (config.DebugEnabled)
         {
-            UpdateDebugDisplay(playerHeatComfort, heatStage, heatBufferRaw);
+            UpdateDebugDisplay(playerHeatComfort, heatStage, heatBufferRaw, heatComfortRaw);
         }
         
         // Debug logging to file
@@ -311,67 +312,59 @@ class DME_ColdFrostOverlay
             if (m_DebugLogTimer >= DEBUG_LOG_INTERVAL)
             {
                 float effectiveTemp = CalculateEffectiveTemperature(playerHeatComfort);
-                Print("[DME_Cold] HeatBuffer: " + heatBufferRaw.ToString() + " Stage: " + heatStage.ToString() + " Comfort: " + playerHeatComfort.ToString() + " Temp: " + effectiveTemp.ToString() + " Frost: " + m_CurrentFrostLevel.ToString() + "/" + m_TargetFrostLevel.ToString() + " Alpha: " + m_CurrentAlpha.ToString());
+                Print("[DME_Cold] HeatComfort(raw): " + heatComfortRaw.ToString() + " HeatBuffer: " + heatBufferRaw.ToString() + " Used: " + playerHeatComfort.ToString() + " Temp: " + effectiveTemp.ToString() + " FrostFloat: " + m_CurrentFrostLevelFloat.ToString() + " Alpha: " + m_CurrentAlpha.ToString());
                 m_DebugLogTimer = 0.0;
             }
         }
     }
     
-    protected void UpdateFrostLevel(float heatComfort, float deltaTime)
+    protected float CalculateTargetFrostLevel(float heatComfort, DME_ColdConfig config)
     {
-        DME_ColdConfig config = DME_ColdConfig.GetInstance();
-        
         // Debug forced frost level
         if (config && config.DebugEnabled && config.DebugForceFrostLevel > 0)
         {
-            m_TargetFrostLevel = config.DebugForceFrostLevel;
-            m_CurrentFrostLevel = m_TargetFrostLevel;
-            return;
+            return config.DebugForceFrostLevel;
         }
         
         // Calculate effective temperature from heat comfort
         float effectiveTemp = CalculateEffectiveTemperature(heatComfort);
         
-        // Calculate frost level based on temperature
-        m_TargetFrostLevel = CalculateFrostLevel(effectiveTemp);
-        
-        // Smooth transition for frost level with delay
-        if (m_CurrentFrostLevel != m_TargetFrostLevel)
-        {
-            m_FrostLevelChangeTimer += deltaTime;
-            
-            // Only change frost level after delay
-            if (m_FrostLevelChangeTimer >= FROST_LEVEL_CHANGE_DELAY)
-            {
-                if (m_CurrentFrostLevel < m_TargetFrostLevel)
-                    m_CurrentFrostLevel++;
-                else if (m_CurrentFrostLevel > m_TargetFrostLevel)
-                    m_CurrentFrostLevel--;
-                
-                m_FrostLevelChangeTimer = 0.0;
-            }
-        }
-        else
-        {
-            m_FrostLevelChangeTimer = 0.0;
-        }
+        // Calculate frost level as float based on temperature
+        // This allows smooth transitions between levels
+        return CalculateFrostLevelFloat(effectiveTemp, config);
     }
     
-    protected void UpdateFrostImage()
+    protected float CalculateFrostLevelFloat(float temperature, DME_ColdConfig config)
     {
-        // Only update if frost level changed and is valid
-        if (m_CurrentFrostLevel == m_CurrentImageLevel)
+        // Return float frost level for smooth interpolation
+        // Temperature 35+ = 0, Temperature 28- = 7
+        if (temperature >= config.FrostLevel0Threshold) return 0.0;
+        if (temperature <= config.FrostLevel7Threshold) return 7.0;
+        
+        // Linear interpolation between thresholds
+        // Map temperature range (28-35) to frost level (7-0)
+        float tempRange = config.FrostLevel0Threshold - config.FrostLevel7Threshold; // 35 - 28 = 7
+        float tempOffset = config.FrostLevel0Threshold - temperature; // How far below 35
+        float frostLevel = (tempOffset / tempRange) * 7.0;
+        
+        return Math.Clamp(frostLevel, 0.0, 7.0);
+    }
+    
+    protected void UpdateFrostImage(int targetImageLevel)
+    {
+        // Only update if image level changed and is valid
+        if (targetImageLevel == m_CurrentImageLevel)
             return;
         
-        if (m_CurrentFrostLevel <= 0)
+        if (targetImageLevel <= 0)
         {
             // No frost, keep image but set alpha to 0 (handled elsewhere)
             m_CurrentImageLevel = 0;
             return;
         }
         
-        // Clamp frost level to valid image range (1-7)
-        int imageLevel = Math.Clamp(m_CurrentFrostLevel, 1, 7);
+        // Clamp to valid image range (1-7)
+        int imageLevel = Math.Clamp(targetImageLevel, 1, 7);
         
         // Load the appropriate frost image
         string imagePath = "DME_Cold/GUI/textures/Freeze" + imageLevel.ToString() + ".paa";
@@ -379,7 +372,7 @@ class DME_ColdFrostOverlay
         
         if (loaded)
         {
-            m_CurrentImageLevel = m_CurrentFrostLevel;
+            m_CurrentImageLevel = targetImageLevel;
             Print("[DME_Cold] Switched to frost image: " + imagePath);
         }
         else
@@ -388,41 +381,25 @@ class DME_ColdFrostOverlay
         }
     }
     
-    protected void UpdateTargetAlpha()
+    protected void UpdateAlphaFromFrostLevel(DME_ColdConfig config)
     {
-        DME_ColdConfig config = DME_ColdConfig.GetInstance();
-        if (!config)
-            return;
-        
-        if (m_CurrentFrostLevel <= 0)
+        if (m_CurrentFrostLevelFloat <= 0.0)
         {
-            m_TargetAlpha = 0.0;
+            m_CurrentAlpha = 0.0;
         }
         else
         {
-            // Map frost level (1-7) to alpha range
+            // Map frost level (0-7) directly to alpha range
+            // This gives smooth alpha transitions as frost level changes
             float alphaRange = config.MaxAlpha - config.MinAlpha;
-            float levelFactor = (m_CurrentFrostLevel - 1) / 6.0; // 0.0 to 1.0
-            m_TargetAlpha = config.MinAlpha + (alphaRange * levelFactor);
+            float levelFactor = (m_CurrentFrostLevelFloat - 1.0) / 6.0; // 0.0 to 1.0 for levels 1-7
+            levelFactor = Math.Clamp(levelFactor, 0.0, 1.0);
+            m_CurrentAlpha = config.MinAlpha + (alphaRange * levelFactor);
+            
+            // Ensure minimum alpha when there's any frost
+            if (m_CurrentFrostLevelFloat > 0.0 && m_CurrentAlpha < config.MinAlpha)
+                m_CurrentAlpha = config.MinAlpha;
         }
-    }
-    
-    protected void UpdateAlpha(float deltaTime)
-    {
-        DME_ColdConfig config = DME_ColdConfig.GetInstance();
-        float speed = 1.0;
-        if (config)
-            speed = config.TransitionSpeed;
-        
-        // Smooth interpolation
-        float diff = m_TargetAlpha - m_CurrentAlpha;
-        m_CurrentAlpha += diff * deltaTime * speed;
-        
-        // Clamp to valid range
-        if (m_CurrentAlpha < 0.001)
-            m_CurrentAlpha = 0.0;
-        if (m_CurrentAlpha > 0.999)
-            m_CurrentAlpha = 1.0;
     }
     
     protected void ApplyAlpha()
@@ -493,12 +470,12 @@ class DME_ColdFrostOverlay
     
     int GetCurrentFrostLevel()
     {
-        return m_CurrentFrostLevel;
+        return Math.Round(m_CurrentFrostLevelFloat);
     }
     
-    int GetTargetFrostLevel()
+    float GetCurrentFrostLevelFloat()
     {
-        return m_TargetFrostLevel;
+        return m_CurrentFrostLevelFloat;
     }
     
     float GetCurrentAlpha()

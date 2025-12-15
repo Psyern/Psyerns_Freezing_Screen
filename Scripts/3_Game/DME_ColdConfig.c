@@ -38,13 +38,59 @@ class DME_ColdConfig
     
     // ===== VISUAL SETTINGS =====
     // Transition speed (how fast frost appears/disappears, higher = faster)
-    float TransitionSpeed = 2.0;
+    float TransitionSpeed = 0.65;
     
     // Minimum alpha when frost starts appearing
     float MinAlpha = 0.1;
     
     // Maximum alpha (transparency) of the frost overlay
     float MaxAlpha = 0.85;
+    
+    // ===== TOXICITY SETTINGS =====
+    // Enable/disable the toxic overlay effect
+    bool EnableToxicEffect = true;
+    
+    // Force a specific toxic level for testing (0 = disabled, 1-7 = force that level)
+    int DebugForceToxicLevel = 0;
+    
+    // Toxicity thresholds (percentage 0-100)
+    float ToxicLevel0Threshold = 0.0;   // Below this = no toxic overlay
+    float ToxicLevel1Threshold = 14.0;  // Light toxic
+    float ToxicLevel2Threshold = 28.0;
+    float ToxicLevel3Threshold = 42.0;
+    float ToxicLevel4Threshold = 57.0;
+    float ToxicLevel5Threshold = 71.0;
+    float ToxicLevel6Threshold = 85.0;
+    float ToxicLevel7Threshold = 100.0; // Maximum toxic
+    
+    // Toxic overlay visual settings
+    float ToxicTransitionSpeed = 0.65;
+    float ToxicMinAlpha = 0.1;
+    float ToxicMaxAlpha = 0.75;
+    
+    // ===== BLOOD LOSS SETTINGS =====
+    // Enable/disable the blood loss overlay effect
+    bool EnableBloodEffect = true;
+    
+    // Force a specific blood level for testing (0 = disabled, 1-7 = force that level)
+    int DebugForceBloodLevel = 0;
+    
+    // Blood thresholds (based on DayZ blood values: 0-5000)
+    // Level 7-4: Severe blood loss (smaller ranges)
+    // Level 3-1: Moderate blood loss (larger ranges)
+    float BloodLevel0Threshold = 5000.0; // Full blood = no overlay
+    float BloodLevel1Threshold = 4200.0; // Light blood loss
+    float BloodLevel2Threshold = 3400.0; // Moderate
+    float BloodLevel3Threshold = 2500.0; // Noticeable
+    float BloodLevel4Threshold = 1700.0; // Serious
+    float BloodLevel5Threshold = 1000.0; // Severe
+    float BloodLevel6Threshold = 750.0;  // Critical
+    float BloodLevel7Threshold = 500.0;  // Near death
+    
+    // Blood overlay visual settings
+    float BloodTransitionSpeed = 0.65;
+    float BloodMinAlpha = 0.1;
+    float BloodMaxAlpha = 0.8;
     
     // Singleton instance
     private static ref DME_ColdConfig s_Instance;
@@ -98,8 +144,12 @@ class DME_ColdConfig
         
         Print("[DME_Cold] Client: Config synced from server!");
         Print("[DME_Cold]   EnableFrostEffect: " + s_Instance.EnableFrostEffect.ToString());
+        Print("[DME_Cold]   EnableToxicEffect: " + s_Instance.EnableToxicEffect.ToString());
+        Print("[DME_Cold]   EnableBloodEffect: " + s_Instance.EnableBloodEffect.ToString());
         Print("[DME_Cold]   DebugEnabled: " + s_Instance.DebugEnabled.ToString());
         Print("[DME_Cold]   DebugForceFrostLevel: " + s_Instance.DebugForceFrostLevel.ToString());
+        Print("[DME_Cold]   DebugForceToxicLevel: " + s_Instance.DebugForceToxicLevel.ToString());
+        Print("[DME_Cold]   DebugForceBloodLevel: " + s_Instance.DebugForceBloodLevel.ToString());
         Print("[DME_Cold]   TransitionSpeed: " + s_Instance.TransitionSpeed.ToString());
         Print("[DME_Cold]   MinAlpha: " + s_Instance.MinAlpha.ToString());
         Print("[DME_Cold]   MaxAlpha: " + s_Instance.MaxAlpha.ToString());
@@ -126,6 +176,34 @@ class DME_ColdConfig
         ctx.Write(TransitionSpeed);
         ctx.Write(MinAlpha);
         ctx.Write(MaxAlpha);
+        // Toxicity settings
+        ctx.Write(EnableToxicEffect);
+        ctx.Write(DebugForceToxicLevel);
+        ctx.Write(ToxicLevel0Threshold);
+        ctx.Write(ToxicLevel1Threshold);
+        ctx.Write(ToxicLevel2Threshold);
+        ctx.Write(ToxicLevel3Threshold);
+        ctx.Write(ToxicLevel4Threshold);
+        ctx.Write(ToxicLevel5Threshold);
+        ctx.Write(ToxicLevel6Threshold);
+        ctx.Write(ToxicLevel7Threshold);
+        ctx.Write(ToxicTransitionSpeed);
+        ctx.Write(ToxicMinAlpha);
+        ctx.Write(ToxicMaxAlpha);
+        // Blood settings
+        ctx.Write(EnableBloodEffect);
+        ctx.Write(DebugForceBloodLevel);
+        ctx.Write(BloodLevel0Threshold);
+        ctx.Write(BloodLevel1Threshold);
+        ctx.Write(BloodLevel2Threshold);
+        ctx.Write(BloodLevel3Threshold);
+        ctx.Write(BloodLevel4Threshold);
+        ctx.Write(BloodLevel5Threshold);
+        ctx.Write(BloodLevel6Threshold);
+        ctx.Write(BloodLevel7Threshold);
+        ctx.Write(BloodTransitionSpeed);
+        ctx.Write(BloodMinAlpha);
+        ctx.Write(BloodMaxAlpha);
     }
     
     /**
@@ -149,6 +227,34 @@ class DME_ColdConfig
         if (!ctx.Read(TransitionSpeed)) return false;
         if (!ctx.Read(MinAlpha)) return false;
         if (!ctx.Read(MaxAlpha)) return false;
+        // Toxicity settings
+        if (!ctx.Read(EnableToxicEffect)) return false;
+        if (!ctx.Read(DebugForceToxicLevel)) return false;
+        if (!ctx.Read(ToxicLevel0Threshold)) return false;
+        if (!ctx.Read(ToxicLevel1Threshold)) return false;
+        if (!ctx.Read(ToxicLevel2Threshold)) return false;
+        if (!ctx.Read(ToxicLevel3Threshold)) return false;
+        if (!ctx.Read(ToxicLevel4Threshold)) return false;
+        if (!ctx.Read(ToxicLevel5Threshold)) return false;
+        if (!ctx.Read(ToxicLevel6Threshold)) return false;
+        if (!ctx.Read(ToxicLevel7Threshold)) return false;
+        if (!ctx.Read(ToxicTransitionSpeed)) return false;
+        if (!ctx.Read(ToxicMinAlpha)) return false;
+        if (!ctx.Read(ToxicMaxAlpha)) return false;
+        // Blood settings
+        if (!ctx.Read(EnableBloodEffect)) return false;
+        if (!ctx.Read(DebugForceBloodLevel)) return false;
+        if (!ctx.Read(BloodLevel0Threshold)) return false;
+        if (!ctx.Read(BloodLevel1Threshold)) return false;
+        if (!ctx.Read(BloodLevel2Threshold)) return false;
+        if (!ctx.Read(BloodLevel3Threshold)) return false;
+        if (!ctx.Read(BloodLevel4Threshold)) return false;
+        if (!ctx.Read(BloodLevel5Threshold)) return false;
+        if (!ctx.Read(BloodLevel6Threshold)) return false;
+        if (!ctx.Read(BloodLevel7Threshold)) return false;
+        if (!ctx.Read(BloodTransitionSpeed)) return false;
+        if (!ctx.Read(BloodMinAlpha)) return false;
+        if (!ctx.Read(BloodMaxAlpha)) return false;
         return true;
     }
     
@@ -172,7 +278,7 @@ class DME_ColdConfig
      */
     static string GetConfigPath()
     {
-        return "$profile:\\DeadmansEcho\\DME_Cold_Config.json";
+        return "$profile:\\DeadmansEcho\\DME_Overlay.json";
     }
     
     /**
@@ -214,12 +320,22 @@ class DME_ColdConfig
             Print("[DME_Cold] Configuration loaded from: " + configPath);
             Print("[DME_Cold] LOADED CONFIG VALUES:");
             Print("[DME_Cold]   EnableFrostEffect: " + EnableFrostEffect.ToString());
+            Print("[DME_Cold]   EnableToxicEffect: " + EnableToxicEffect.ToString());
+            Print("[DME_Cold]   EnableBloodEffect: " + EnableBloodEffect.ToString());
             Print("[DME_Cold]   DebugEnabled: " + DebugEnabled.ToString());
             Print("[DME_Cold]   DebugForceFrostLevel: " + DebugForceFrostLevel.ToString());
+            Print("[DME_Cold]   DebugForceToxicLevel: " + DebugForceToxicLevel.ToString());
+            Print("[DME_Cold]   DebugForceBloodLevel: " + DebugForceBloodLevel.ToString());
             Print("[DME_Cold]   DebugLogTemperature: " + DebugLogTemperature.ToString());
             Print("[DME_Cold]   TransitionSpeed: " + TransitionSpeed.ToString());
             Print("[DME_Cold]   MinAlpha: " + MinAlpha.ToString());
             Print("[DME_Cold]   MaxAlpha: " + MaxAlpha.ToString());
+            Print("[DME_Cold]   ToxicTransitionSpeed: " + ToxicTransitionSpeed.ToString());
+            Print("[DME_Cold]   ToxicMinAlpha: " + ToxicMinAlpha.ToString());
+            Print("[DME_Cold]   ToxicMaxAlpha: " + ToxicMaxAlpha.ToString());
+            Print("[DME_Cold]   BloodTransitionSpeed: " + BloodTransitionSpeed.ToString());
+            Print("[DME_Cold]   BloodMinAlpha: " + BloodMinAlpha.ToString());
+            Print("[DME_Cold]   BloodMaxAlpha: " + BloodMaxAlpha.ToString());
         }
         else
         {
