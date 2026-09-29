@@ -3,6 +3,9 @@
  * 
  * Handles RPC messages for DME_Cold mod.
  * Uses modded PlayerBase to receive config sync from server.
+ * 
+ * Note: Server-side reload request handling is done in MissionServer (5_Mission)
+ * because MissionServer type is not available in 4_World module.
  */
 modded class PlayerBase
 {
@@ -13,11 +16,21 @@ modded class PlayerBase
     {
         super.OnRPC(sender, rpc_type, ctx);
         
-        // Only process on client
+        // SERVER: Handle reload request from admin client
+        // Note: We handle this by calling a static method that the MissionServer registers
         if (GetGame().IsServer())
+        {
+            if (rpc_type == DME_COLD_RPC_RELOAD_REQUEST)
+            {
+                Print("[DME_Cold] Server: Received reload request RPC from player");
+                // The actual handling is done via OnRPC in MissionServer
+                // We just pass it through - MissionServer will catch this via GetGame().GetMission()
+                DME_ColdReloadHandler.HandleRequest(this, sender);
+            }
             return;
+        }
         
-        // Handle config sync RPC
+        // CLIENT: Handle config sync RPC
         if (rpc_type == DME_COLD_RPC_SYNC_CONFIG)
         {
             Print("[DME_Cold] Client: Received config sync RPC");
@@ -33,6 +46,28 @@ modded class PlayerBase
             else
             {
                 Print("[DME_Cold] Client: ERROR - Failed to read config from RPC!");
+            }
+        }
+        
+        // CLIENT: Handle reload response from server
+        if (rpc_type == DME_COLD_RPC_RELOAD_RESPONSE)
+        {
+            Print("[DME_Cold] Client: Received reload response RPC");
+            
+            Param2<bool, string> params;
+            if (ctx.Read(params))
+            {
+                bool success = params.param1;
+                string message = params.param2;
+                
+                if (success)
+                {
+                    Print("[DME_Cold] Client: Admin reload SUCCESS - " + message);
+                }
+                else
+                {
+                    Print("[DME_Cold] Client: Admin reload FAILED - " + message);
+                }
             }
         }
     }

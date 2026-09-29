@@ -145,6 +145,15 @@ class DME_BloodOverlay
         // Calculate target blood level (as float for smooth transitions)
         float targetBloodLevel = CalculateTargetBloodLevel(bloodRaw, config);
         
+        // If blood is full (level 0), ensure overlay is hidden
+        if (targetBloodLevel <= 0.0)
+        {
+            m_CurrentBloodLevelFloat = 0.0;
+            m_CurrentAlpha = 0.0;
+            ApplyAlpha();
+            return;
+        }
+        
         // Smoothly interpolate blood level using TransitionSpeed
         float diff = targetBloodLevel - m_CurrentBloodLevelFloat;
         m_CurrentBloodLevelFloat += diff * deltaTime * config.BloodTransitionSpeed;

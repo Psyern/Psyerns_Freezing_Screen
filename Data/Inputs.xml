@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<modded_inputs>
+	<inputs>
+		<actions>
+			<input name="UADMEColdReload" loc="Reload Config (Admin)" />
+		</actions>
+		
+		<sorting name="dmecold" loc="DME Cold">
+			<input name="UADMEColdReload" />
+		</sorting>
+	</inputs>
+	
+	<preset>
+		<input name="UADMEColdReload">
+			<btn name="kNumpad8" />
+		</input>
+	</preset>
+</modded_inputs>

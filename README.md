@@ -5,7 +5,7 @@ A DayZ mod that adds visual overlay effects based on the player's body temperatu
 ## Features
 
 - **7 Progressive Frost Levels**: As the player gets colder, the screen progressively shows more frost
-- **7 Progressive Toxic Levels**: Toxic zone contamination shows green overlay effect
+- **5 Progressive Toxic Levels**: Toxic zone contamination shows green overlay effect
 - **7 Progressive Blood Levels**: Blood loss shows red vignette overlay effect
 - **Smooth Transitions**: Effects fade in and out smoothly based on stat changes
 - **Temperature-Based Frost**: Uses player's HeatComfort stat for realistic cold feeling
@@ -13,6 +13,7 @@ A DayZ mod that adds visual overlay effects based on the player's body temperatu
 - **Blood Loss Detection**: Uses player's Blood stat for injury visualization
 - **Native DayZ Widgets**: Built using native DayZ widget system (no external dependencies!)
 - **Server-Controlled Config**: Configuration is stored on server and synced to clients automatically
+- **Admin Hotkey Reload**: Admins can reload config in-game with Numpad 8 (configurable)
 - **Configurable**: Server admins can customize thresholds for both effects
 
 ## Requirements
@@ -25,6 +26,25 @@ A DayZ mod that adds visual overlay effects based on the player's body temperatu
 1. Copy the `DME_Cold` folder to your DayZ server's mod directory
 2. Add `@DME_Cold` to your server's mod list (both server AND client mods!)
 3. Restart the server
+
+## Admin Hotkey Reload
+
+Admins can reload the config in-game without restarting the server:
+
+1. **Setup Admin List**: Copy `dme_cold_admins.json.example` to `profiles/DeadmansEcho/dme_cold_admins.json`
+2. **Add your Steam64 ID** to the `AdminGUIDs` array
+3. **Press Numpad 8** (default) in-game to reload config
+4. The keybind can be changed in **Options > Controls > DME Cold**
+
+Example `dme_cold_admins.json`:
+```json
+{
+    "AdminGUIDs": [
+        "76561198012345678",
+        "76561198087654321"
+    ]
+}
+```
 
 ## Configuration
 
@@ -44,7 +64,7 @@ profiles/DeadmansEcho/DME_Overlay.json
 | **EnableBloodEffect** | true | **Enable/disable the blood loss overlay** |
 | **DebugEnabled** | false | **Enable debug logging (shows values in log)** |
 | **DebugForceFrostLevel** | 0 | **Force a specific frost level (0=off, 1-7=force)** |
-| **DebugForceToxicLevel** | 0 | **Force a specific toxic level (0=off, 1-7=force)** |
+| **DebugForceToxicLevel** | 0 | **Force a specific toxic level (0=off, 1-5=force)** |
 | **DebugForceBloodLevel** | 0 | **Force a specific blood level (0=off, 1-7=force)** |
 | **DebugLogTemperature** | false | **Log temperature values to console** |
 | FrostLevel0Threshold | 35.0 | Temperature above which no frost appears |
@@ -55,15 +75,15 @@ profiles/DeadmansEcho/DME_Overlay.json
 | FrostLevel5Threshold | 30.0 | Temperature for level 5 frost |
 | FrostLevel6Threshold | 29.0 | Temperature for level 6 frost |
 | FrostLevel7Threshold | 28.0 | Temperature for maximum frost |
-| TransitionSpeed | 2.0 | How fast frost fades in/out |
+| TransitionSpeed | 0.65 | How fast frost fades in/out |
 | MinAlpha | 0.1 | Minimum opacity when frost starts |
 | MaxAlpha | 0.85 | Maximum opacity of frost overlay (0.0-1.0) |
-| ToxicLevel0-7Threshold | 0-100 | Toxicity percentage thresholds |
-| ToxicTransitionSpeed | 2.0 | How fast toxic fades in/out |
+| ToxicLevel0-5Threshold | 0-100 | Toxicity percentage thresholds (5 levels) |
+| ToxicTransitionSpeed | 0.65 | How fast toxic fades in/out |
 | ToxicMinAlpha | 0.1 | Minimum opacity when toxic starts |
 | ToxicMaxAlpha | 0.75 | Maximum opacity of toxic overlay |
 | BloodLevel0-7Threshold | 5000-500 | Blood thresholds (see below) |
-| BloodTransitionSpeed | 2.0 | How fast blood fades in/out |
+| BloodTransitionSpeed | 0.65 | How fast blood fades in/out |
 | BloodMinAlpha | 0.1 | Minimum opacity when blood loss starts |
 | BloodMaxAlpha | 0.8 | Maximum opacity of blood overlay |
 
@@ -87,7 +107,7 @@ Set `DebugEnabled` to `true` in the config to see debug output in the log every 
 - `Blood`: Current blood level (0-5000)
 
 Set `DebugForceFrostLevel` to 1-7 to force a specific frost level for testing.
-Set `DebugForceToxicLevel` to 1-7 to force a specific toxic level for testing.
+Set `DebugForceToxicLevel` to 1-5 to force a specific toxic level for testing.
 Set `DebugForceBloodLevel` to 1-7 to force a specific blood level for testing.
 
 ## How It Works

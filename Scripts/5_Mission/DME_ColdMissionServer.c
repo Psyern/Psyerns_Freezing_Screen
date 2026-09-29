@@ -15,6 +15,10 @@ modded class MissionServer
         
         Print("[DME_Cold] ======== SERVER MISSION START ========");
         
+        // Register reload handler callback
+        DME_ColdReloadHandler.GetOnReloadRequest().Insert(OnReloadRequestCallback);
+        Print("[DME_Cold] Server: Reload handler registered");
+        
         // Load config on server
         DME_ColdConfig config = DME_ColdConfig.GetInstance();
         if (config)
@@ -29,6 +33,14 @@ modded class MissionServer
         }
         
         Print("[DME_Cold] ======== SERVER READY ========");
+    }
+    
+    /**
+     * Callback when a reload request is received from a client
+     */
+    void OnReloadRequestCallback(PlayerBase player, PlayerIdentity identity)
+    {
+        HandleReloadRequest(player, identity);
     }
     
     /**
@@ -101,5 +113,53 @@ modded class MissionServer
         }
         
         Print("[DME_Cold] Server: Config broadcast complete - sent to " + players.Count().ToString() + " players");
+    }
+    
+    /**
+     * Handle admin reload request from client
+     */
+    void HandleReloadRequest(PlayerBase player, PlayerIdentity identity)
+    {
+        if (!player || !identity)
+            return;
+        
+        string playerName = identity.GetName();
+        string playerGUID = identity.GetId();
+        
+        Print("[DME_Cold] Server: Reload request from " + playerName + " (GUID: " + playerGUID + ")");
+        
+        // Check if player is admin
+        ref DME_ColdAdminConfig adminConfig = DME_ColdAdminConfig.Load();
+        if (!adminConfig || !adminConfig.IsAdmin(playerGUID))
+        {
+            Print("[DME_Cold] Server: Player " + playerName + " is NOT an admin - request denied!");
+            SendReloadResponse(player, identity, false, "You are not an admin");
+            return;
+        }
+        
+        Print("[DME_Cold] Server: Player " + playerName + " IS an admin - reloading config...");
+        
+        // Force reload config from file
+        DME_ColdConfig.ReloadConfigFromFile();
+        
+        // Broadcast new config to all clients
+        SendConfigToAllClients();
+        
+        // Send success response
+        SendReloadResponse(player, identity, true, "Config reloaded and synced to all players");
+        
+        Print("[DME_Cold] Server: Config reload complete!");
+    }
+    
+    /**
+     * Send reload response to client
+     */
+    void SendReloadResponse(PlayerBase player, PlayerIdentity identity, bool success, string message)
+    {
+        if (!player || !identity)
+            return;
+        
+        auto params = new Param2<bool, string>(success, message);
+        GetGame().RPCSingleParam(player, DME_COLD_RPC_RELOAD_RESPONSE, params, true, identity);
     }
 }

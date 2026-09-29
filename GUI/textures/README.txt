@@ -19,9 +19,7 @@ TOXIC TEXTURES (Gas Zone/Poisoning Effect)
 - toxic2.paa (level 2)
 - toxic3.paa (level 3)
 - toxic4.paa (level 4)
-- toxic5.paa (level 5)
-- toxic6.paa (level 6)
-- toxic7.paa (heaviest toxic - level 7)
+- toxic5.paa (heaviest toxic - level 5)
 
 BLOOD TEXTURES (Blood Loss/Injury Effect)
 -----------------------------------------

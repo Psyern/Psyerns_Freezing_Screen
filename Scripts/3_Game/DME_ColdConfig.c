@@ -50,18 +50,16 @@ class DME_ColdConfig
     // Enable/disable the toxic overlay effect
     bool EnableToxicEffect = true;
     
-    // Force a specific toxic level for testing (0 = disabled, 1-7 = force that level)
+    // Force a specific toxic level for testing (0 = disabled, 1-5 = force that level)
     int DebugForceToxicLevel = 0;
     
-    // Toxicity thresholds (percentage 0-100)
+    // Toxicity thresholds (percentage 0-100) - 5 levels
     float ToxicLevel0Threshold = 0.0;   // Below this = no toxic overlay
-    float ToxicLevel1Threshold = 14.0;  // Light toxic
-    float ToxicLevel2Threshold = 28.0;
-    float ToxicLevel3Threshold = 42.0;
-    float ToxicLevel4Threshold = 57.0;
-    float ToxicLevel5Threshold = 71.0;
-    float ToxicLevel6Threshold = 85.0;
-    float ToxicLevel7Threshold = 100.0; // Maximum toxic
+    float ToxicLevel1Threshold = 20.0;  // Light toxic
+    float ToxicLevel2Threshold = 40.0;
+    float ToxicLevel3Threshold = 60.0;
+    float ToxicLevel4Threshold = 80.0;
+    float ToxicLevel5Threshold = 100.0; // Maximum toxic
     
     // Toxic overlay visual settings
     float ToxicTransitionSpeed = 0.65;
@@ -156,6 +154,32 @@ class DME_ColdConfig
     }
     
     /**
+     * Force reload config from file (SERVER ONLY)
+     * Used by admin reload command
+     */
+    static void ReloadConfigFromFile()
+    {
+        if (!GetGame().IsServer())
+        {
+            Print("[DME_Cold] ReloadConfigFromFile can only be called on server!");
+            return;
+        }
+        
+        Print("[DME_Cold] Server: Reloading config from file...");
+        
+        // Create new instance and load from file
+        s_Instance = new DME_ColdConfig();
+        s_Instance.Load();
+        s_ConfigSynced = true;
+        
+        Print("[DME_Cold] Server: Config reloaded successfully!");
+        Print("[DME_Cold]   EnableFrostEffect: " + s_Instance.EnableFrostEffect.ToString());
+        Print("[DME_Cold]   EnableToxicEffect: " + s_Instance.EnableToxicEffect.ToString());
+        Print("[DME_Cold]   EnableBloodEffect: " + s_Instance.EnableBloodEffect.ToString());
+        Print("[DME_Cold]   DebugEnabled: " + s_Instance.DebugEnabled.ToString());
+    }
+    
+    /**
      * Serialize config to params for RPC
      */
     void WriteToParams(ParamsWriteContext ctx)
@@ -176,7 +200,7 @@ class DME_ColdConfig
         ctx.Write(TransitionSpeed);
         ctx.Write(MinAlpha);
         ctx.Write(MaxAlpha);
-        // Toxicity settings
+        // Toxicity settings (5 levels)
         ctx.Write(EnableToxicEffect);
         ctx.Write(DebugForceToxicLevel);
         ctx.Write(ToxicLevel0Threshold);
@@ -185,8 +209,6 @@ class DME_ColdConfig
         ctx.Write(ToxicLevel3Threshold);
         ctx.Write(ToxicLevel4Threshold);
         ctx.Write(ToxicLevel5Threshold);
-        ctx.Write(ToxicLevel6Threshold);
-        ctx.Write(ToxicLevel7Threshold);
         ctx.Write(ToxicTransitionSpeed);
         ctx.Write(ToxicMinAlpha);
         ctx.Write(ToxicMaxAlpha);
@@ -227,7 +249,7 @@ class DME_ColdConfig
         if (!ctx.Read(TransitionSpeed)) return false;
         if (!ctx.Read(MinAlpha)) return false;
         if (!ctx.Read(MaxAlpha)) return false;
-        // Toxicity settings
+        // Toxicity settings (5 levels)
         if (!ctx.Read(EnableToxicEffect)) return false;
         if (!ctx.Read(DebugForceToxicLevel)) return false;
         if (!ctx.Read(ToxicLevel0Threshold)) return false;
@@ -236,8 +258,6 @@ class DME_ColdConfig
         if (!ctx.Read(ToxicLevel3Threshold)) return false;
         if (!ctx.Read(ToxicLevel4Threshold)) return false;
         if (!ctx.Read(ToxicLevel5Threshold)) return false;
-        if (!ctx.Read(ToxicLevel6Threshold)) return false;
-        if (!ctx.Read(ToxicLevel7Threshold)) return false;
         if (!ctx.Read(ToxicTransitionSpeed)) return false;
         if (!ctx.Read(ToxicMinAlpha)) return false;
         if (!ctx.Read(ToxicMaxAlpha)) return false;

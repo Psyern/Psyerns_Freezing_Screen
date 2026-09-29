@@ -145,8 +145,8 @@ class DME_ToxicOverlay
         float diff = targetToxicLevel - m_CurrentToxicLevelFloat;
         m_CurrentToxicLevelFloat += diff * deltaTime * config.ToxicTransitionSpeed;
         
-        // Clamp to valid range
-        m_CurrentToxicLevelFloat = Math.Clamp(m_CurrentToxicLevelFloat, 0.0, 7.0);
+        // Clamp to valid range (0-5 for 5 toxic images)
+        m_CurrentToxicLevelFloat = Math.Clamp(m_CurrentToxicLevelFloat, 0.0, 5.0);
         
         // Update toxic image based on rounded level
         int roundedToxicLevel = Math.Round(m_CurrentToxicLevelFloat);
@@ -185,17 +185,17 @@ class DME_ToxicOverlay
     protected float CalculateToxicLevelFloat(float toxicity, DME_ColdConfig config)
     {
         // Return float toxic level for smooth interpolation
-        // Toxicity 0 = 0, Toxicity 100 = 7
+        // Toxicity 0 = 0, Toxicity 100 = 5 (5 images now)
         if (toxicity <= config.ToxicLevel0Threshold) return 0.0;
-        if (toxicity >= config.ToxicLevel7Threshold) return 7.0;
+        if (toxicity >= config.ToxicLevel5Threshold) return 5.0;
         
         // Linear interpolation between thresholds
-        // Map toxicity range (0-100) to toxic level (0-7)
-        float toxicRange = config.ToxicLevel7Threshold - config.ToxicLevel0Threshold; // 100 - 0 = 100
-        float toxicOffset = toxicity - config.ToxicLevel0Threshold; // How far above 0
-        float toxicLevel = (toxicOffset / toxicRange) * 7.0;
+        // Map toxicity range (0-100) to toxic level (0-5)
+        float toxicRange = config.ToxicLevel5Threshold - config.ToxicLevel0Threshold;
+        float toxicOffset = toxicity - config.ToxicLevel0Threshold;
+        float toxicLevel = (toxicOffset / toxicRange) * 5.0;
         
-        return Math.Clamp(toxicLevel, 0.0, 7.0);
+        return Math.Clamp(toxicLevel, 0.0, 5.0);
     }
     
     protected void UpdateToxicImage(int targetImageLevel)
@@ -211,8 +211,8 @@ class DME_ToxicOverlay
             return;
         }
         
-        // Clamp to valid image range (1-7)
-        int imageLevel = Math.Clamp(targetImageLevel, 1, 7);
+        // Clamp to valid image range (1-5 for 5 toxic images)
+        int imageLevel = Math.Clamp(targetImageLevel, 1, 5);
         
         // Load the appropriate toxic image
         string imagePath = "DME_Cold/GUI/textures/toxic" + imageLevel.ToString() + ".paa";
@@ -237,9 +237,9 @@ class DME_ToxicOverlay
         }
         else
         {
-            // Map toxic level (0-7) directly to alpha range
+            // Map toxic level (0-5) directly to alpha range
             float alphaRange = config.ToxicMaxAlpha - config.ToxicMinAlpha;
-            float levelFactor = (m_CurrentToxicLevelFloat - 1.0) / 6.0; // 0.0 to 1.0 for levels 1-7
+            float levelFactor = (m_CurrentToxicLevelFloat - 1.0) / 4.0; // 0.0 to 1.0 for levels 1-5
             levelFactor = Math.Clamp(levelFactor, 0.0, 1.0);
             m_CurrentAlpha = config.ToxicMinAlpha + (alphaRange * levelFactor);
             

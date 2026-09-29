@@ -5,6 +5,7 @@
  * MissionGameplay only runs on clients, not on the server.
  * 
  * Config is received from server via RPC (handled in DME_ColdRPCHandler.c)
+ * Includes admin keybind for config reload (Numpad 8 by default, configurable in Options > Controls)
  */
 modded class MissionGameplay
 {
@@ -14,6 +15,34 @@ modded class MissionGameplay
     protected bool m_DME_ColdMissionOverlayInitialized = false;
     protected bool m_DME_ToxicOverlayInitialized = false;
     protected bool m_DME_BloodOverlayInitialized = false;
+    
+    // Input action handle for the reload keybind
+    protected UAInput m_DME_ReloadInput;
+    protected bool m_DME_InputInitialized = false;
+    
+    /**
+     * Called when the mission initializes
+     */
+    override void OnInit()
+    {
+        super.OnInit();
+        
+        // Only on actual client, not server
+        if (GetGame().IsClient() && !GetGame().IsServer())
+        {
+            // Get the input action defined in inputs.xml
+            m_DME_ReloadInput = GetUApi().GetInputByName("UADMEColdReload");
+            if (m_DME_ReloadInput)
+            {
+                m_DME_InputInitialized = true;
+                Print("[DME_Cold] Client: Keybind loaded - Reload Config (configurable in Options > Controls > DME Cold)");
+            }
+            else
+            {
+                Print("[DME_Cold] Client: WARNING - Keybind 'UADMEColdReload' not found. Check inputs.xml");
+            }
+        }
+    }
     
     /**
      * Called when the mission starts
@@ -190,6 +219,15 @@ modded class MissionGameplay
     {
         super.OnUpdate(timeslice);
         
+        // Check for admin reload keybind (only if input was successfully initialized)
+        if (m_DME_InputInitialized && m_DME_ReloadInput)
+        {
+            if (m_DME_ReloadInput.LocalPress())
+            {
+                OnDME_ReloadKeyPressed();
+            }
+        }
+        
         // Try to initialize overlay if not done
         if (!m_DME_ColdMissionOverlayInitialized)
         {
@@ -218,6 +256,7 @@ modded class MissionGameplay
             float heatComfortRaw = -999.0; // HeatComfort: probably similar range
             float toxicityRaw = 0.0; // Toxicity: 0-100
             float bloodRaw = 5000.0; // Blood: 0-5000 (5000 = full)
+            float bloodValueDebug = 0.0; // Debug: original GetHealth value
             
             // Get HeatBuffer (-30 to +30, changes quickly near heat sources)
             PlayerStat<float> heatBufferStat = player.GetStatHeatBuffer();
@@ -263,7 +302,29 @@ modded class MissionGameplay
             }
             
             // Get Blood stat (0-5000, 5000 = full blood)
-            bloodRaw = player.GetHealth("GlobalHealth", "Blood");
+            // DayZ uses GetHealth("", "Blood") or GetHealth("GlobalHealth", "Blood")
+            // Try both methods to ensure we get a valid value
+            float bloodValue = player.GetHealth("", "Blood");
+            bloodValueDebug = bloodValue; // Store original for debug
+            
+            // Validate the blood value
+            // DayZ blood range is 0-5000, default is 5000 (full)
+            if (bloodValue > 0 && bloodValue <= 5000)
+            {
+                // Valid blood value in expected range
+                bloodRaw = bloodValue;
+            }
+            else if (bloodValue > 5000)
+            {
+                // Value exceeds max, clamp it
+                bloodRaw = 5000.0;
+            }
+            else
+            {
+                // Invalid, zero, or negative - assume full blood
+                // This handles cases where player hasn't fully loaded yet
+                bloodRaw = 5000.0;
+            }
             
             // Update frost overlay with heat stage and raw values for debug display
             if (m_DME_ColdMissionOverlay)
@@ -318,7 +379,7 @@ modded class MissionGameplay
                     Print("[DME_Cold] ============ DEBUG ============");
                     Print("[DME_Cold] RAW VALUES:");
                     Print("[DME_Cold]   HeatComfort: " + heatComfortRaw.ToString() + " | HeatBuffer: " + heatBufferRaw.ToString() + " | HeatStage: " + heatStage.ToString());
-                    Print("[DME_Cold]   Toxicity: " + toxicityRaw.ToString() + " | Blood: " + bloodRaw.ToString());
+                    Print("[DME_Cold]   Toxicity: " + toxicityRaw.ToString() + " | Blood(GetHealth): " + bloodValueDebug.ToString() + " | Blood(Used): " + bloodRaw.ToString());
                     Print("[DME_Cold] OVERLAY STATES:");
                     Print("[DME_Cold]   Frost:  Level=" + frostLevel.ToString() + " Alpha=" + frostAlpha.ToString() + " (Enabled=" + config.EnableFrostEffect.ToString() + ")");
                     Print("[DME_Cold]   Toxic:  Level=" + toxicLevel.ToString() + " Alpha=" + toxicAlpha.ToString() + " (Enabled=" + config.EnableToxicEffect.ToString() + ")");
@@ -328,6 +389,43 @@ modded class MissionGameplay
                     debugTimer = 0;
                 }
             }
+        }
+    }
+    
+    /**
+     * Called when admin presses the reload keybind
+     */
+    protected void OnDME_ReloadKeyPressed()
+    {
+        Print("[DME_Cold] Client: Admin reload key pressed (Numpad 8)");
+        
+        // Get player
+        PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+        if (!player)
+        {
+            Print("[DME_Cold] Client: No player found!");
+            return;
+        }
+        
+        Print("[DME_Cold] Client: Sending reload request to server...");
+        
+        // Send RPC to server
+        auto params = new Param1<bool>(true);
+        GetGame().RPCSingleParam(player, DME_COLD_RPC_RELOAD_REQUEST, params, true);
+    }
+    
+    /**
+     * Called when server responds to reload request
+     */
+    void OnReloadResponse(bool success, string message)
+    {
+        if (success)
+        {
+            Print("[DME_Cold] Client: Config reloaded successfully - " + message);
+        }
+        else
+        {
+            Print("[DME_Cold] Client: Config reload failed - " + message);
         }
     }
 }
