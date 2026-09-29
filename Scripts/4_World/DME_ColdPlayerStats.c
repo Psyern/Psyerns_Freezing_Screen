@@ -74,7 +74,7 @@ modded class PlayerBase
 
 		m_DME_StatSyncForceTimer = 0;
 		Param3<float, float, float> data = new Param3<float, float, float>(heatComfort, toxicity, blood);
-		g_Game.RPCSingleParam(this, DME_COLD_RPC_SYNC_STATS, data, false, identity);
+		PsyCore_RPC.SendParam(DME_COLD_RPC_NS, DME_COLD_RPC_SYNC_STATS, data, false, identity, this);
 	}
 
 	/**

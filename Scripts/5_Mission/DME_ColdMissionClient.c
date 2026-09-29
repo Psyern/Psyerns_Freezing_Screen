@@ -4,7 +4,7 @@
  * Extends MissionGameplay (CLIENT ONLY) to manage the frost overlay lifecycle.
  * MissionGameplay only runs on clients, not on the server.
  * 
- * Config is received from server via RPC (handled in DME_ColdRPCHandler.c)
+ * Config is received from server via the Psyerns Core RPC router (handlers in DME_ColdRPCHandler.c)
  * Includes admin keybind for config reload (Numpad 8 by default, configurable in Options > Controls)
  */
 modded class MissionGameplay
@@ -15,6 +15,9 @@ modded class MissionGameplay
 	protected bool m_DME_ColdMissionOverlayInitialized = false;
 	protected bool m_DME_ToxicOverlayInitialized = false;
 	protected bool m_DME_BloodOverlayInitialized = false;
+
+	// Client RPC handlers (Psyerns Core router)
+	protected ref DME_ColdRpc m_DME_ColdRpc;
 
 	// Input action handle for the reload keybind
 	protected UAInput m_DME_ReloadInput;
@@ -34,16 +37,18 @@ modded class MissionGameplay
 		// Only on actual client, not server
 		if (g_Game && g_Game.IsClient() && !g_Game.IsServer())
 		{
+			m_DME_ColdRpc = new DME_ColdRpc(false);
+
 			// Get the input action defined in inputs.xml
 			m_DME_ReloadInput = GetUApi().GetInputByName("UADMEColdReload");
 			if (m_DME_ReloadInput)
 			{
 				m_DME_InputInitialized = true;
-				Print("[DME_Cold] Client: Keybind loaded - Reload Config (configurable in Options > Controls > DME Cold)");
+				PsyCore_Log.Get("DME_Cold").Info("Client: Keybind loaded - Reload Config (configurable in Options > Controls > DME Cold)");
 			}
 			else
 			{
-				Print("[DME_Cold] Client: WARNING - Keybind 'UADMEColdReload' not found. Check inputs.xml");
+				PsyCore_Log.Get("DME_Cold").Warn("Client: Keybind 'UADMEColdReload' not found. Check inputs.xml");
 			}
 		}
 	}
@@ -55,9 +60,9 @@ modded class MissionGameplay
 	{
 		super.OnMissionStart();
 
-		Print("[DME_Cold] ======== CLIENT MISSION START ========");
-		Print("[DME_Cold] Client: Waiting for config from server...");
-		Print("[DME_Cold] ======== MISSION START COMPLETE ========");
+		PsyCore_Log.Get("DME_Cold").Info("======== CLIENT MISSION START ========");
+		PsyCore_Log.Get("DME_Cold").Info("Client: Waiting for config from server...");
+		PsyCore_Log.Get("DME_Cold").Info("======== MISSION START COMPLETE ========");
 	}
 
 	protected void DME_InitMissionOverlay()
@@ -77,13 +82,13 @@ modded class MissionGameplay
 			return; // Silent wait - player will be available soon
 		}
 
-		Print("[DME_Cold] ======== MISSION OVERLAY INIT ========");
+		PsyCore_Log.Get("DME_Cold").Info("======== MISSION OVERLAY INIT ========");
 
 		// Check if frost effect is enabled
 		DME_ColdConfig config = DME_ColdConfig.GetInstance();
 		if (config && !config.EnableFrostEffect)
 		{
-			Print("[DME_Cold] Frost effect is disabled in config - skipping overlay");
+			PsyCore_Log.Get("DME_Cold").Info("Frost effect is disabled in config - skipping overlay");
 			m_DME_ColdMissionOverlayInitialized = true; // Mark as "initialized" to stop trying
 			return;
 		}
@@ -95,13 +100,13 @@ modded class MissionGameplay
 		{
 			playerName = identity.GetName();
 		}
-		Print("[DME_Cold] Mission: Local player found: " + playerName);
+		PsyCore_Log.Get("DME_Cold").Info("Mission: Local player found: " + playerName);
 
 		// Create overlay instance
 		m_DME_ColdMissionOverlay = new DME_ColdFrostOverlay();
 		if (!m_DME_ColdMissionOverlay)
 		{
-			Print("[DME_Cold] Mission: ERROR creating overlay instance!");
+			PsyCore_Log.Get("DME_Cold").Error("Mission: creating overlay instance!");
 			return;
 		}
 
@@ -109,13 +114,13 @@ modded class MissionGameplay
 		bool success = m_DME_ColdMissionOverlay.CreateOverlay();
 		if (!success)
 		{
-			Print("[DME_Cold] Mission: ERROR creating overlay widgets!");
+			PsyCore_Log.Get("DME_Cold").Error("Mission: creating overlay widgets!");
 			m_DME_ColdMissionOverlay = null;
 			return;
 		}
 
 		m_DME_ColdMissionOverlayInitialized = true;
-		Print("[DME_Cold] ======== MISSION OVERLAY INITIALIZED ========");
+		PsyCore_Log.Get("DME_Cold").Info("======== MISSION OVERLAY INITIALIZED ========");
 	}
 
 	protected void DME_InitToxicOverlay()
@@ -135,13 +140,13 @@ modded class MissionGameplay
 			return; // Silent wait - player will be available soon
 		}
 
-		Print("[DME_Cold] ======== TOXIC OVERLAY INIT ========");
+		PsyCore_Log.Get("DME_Cold").Info("======== TOXIC OVERLAY INIT ========");
 
 		// Check if toxic effect is enabled
 		DME_ColdConfig config = DME_ColdConfig.GetInstance();
 		if (config && !config.EnableToxicEffect)
 		{
-			Print("[DME_Cold] Toxic effect is disabled in config - skipping overlay");
+			PsyCore_Log.Get("DME_Cold").Info("Toxic effect is disabled in config - skipping overlay");
 			m_DME_ToxicOverlayInitialized = true; // Mark as "initialized" to stop trying
 			return;
 		}
@@ -150,7 +155,7 @@ modded class MissionGameplay
 		m_DME_ToxicOverlay = new DME_ToxicOverlay();
 		if (!m_DME_ToxicOverlay)
 		{
-			Print("[DME_Cold] Mission: ERROR creating toxic overlay instance!");
+			PsyCore_Log.Get("DME_Cold").Error("Mission: creating toxic overlay instance!");
 			return;
 		}
 
@@ -158,13 +163,13 @@ modded class MissionGameplay
 		bool success = m_DME_ToxicOverlay.CreateOverlay();
 		if (!success)
 		{
-			Print("[DME_Cold] Mission: ERROR creating toxic overlay widgets!");
+			PsyCore_Log.Get("DME_Cold").Error("Mission: creating toxic overlay widgets!");
 			m_DME_ToxicOverlay = null;
 			return;
 		}
 
 		m_DME_ToxicOverlayInitialized = true;
-		Print("[DME_Cold] ======== TOXIC OVERLAY INITIALIZED ========");
+		PsyCore_Log.Get("DME_Cold").Info("======== TOXIC OVERLAY INITIALIZED ========");
 	}
 
 	protected void DME_InitBloodOverlay()
@@ -184,13 +189,13 @@ modded class MissionGameplay
 			return; // Silent wait - player will be available soon
 		}
 
-		Print("[DME_Cold] ======== BLOOD OVERLAY INIT ========");
+		PsyCore_Log.Get("DME_Cold").Info("======== BLOOD OVERLAY INIT ========");
 
 		// Check if blood effect is enabled
 		DME_ColdConfig config = DME_ColdConfig.GetInstance();
 		if (config && !config.EnableBloodEffect)
 		{
-			Print("[DME_Cold] Blood effect is disabled in config - skipping overlay");
+			PsyCore_Log.Get("DME_Cold").Info("Blood effect is disabled in config - skipping overlay");
 			m_DME_BloodOverlayInitialized = true; // Mark as "initialized" to stop trying
 			return;
 		}
@@ -199,7 +204,7 @@ modded class MissionGameplay
 		m_DME_BloodOverlay = new DME_BloodOverlay();
 		if (!m_DME_BloodOverlay)
 		{
-			Print("[DME_Cold] Mission: ERROR creating blood overlay instance!");
+			PsyCore_Log.Get("DME_Cold").Error("Mission: creating blood overlay instance!");
 			return;
 		}
 
@@ -207,13 +212,13 @@ modded class MissionGameplay
 		bool success = m_DME_BloodOverlay.CreateOverlay();
 		if (!success)
 		{
-			Print("[DME_Cold] Mission: ERROR creating blood overlay widgets!");
+			PsyCore_Log.Get("DME_Cold").Error("Mission: creating blood overlay widgets!");
 			m_DME_BloodOverlay = null;
 			return;
 		}
 
 		m_DME_BloodOverlayInitialized = true;
-		Print("[DME_Cold] ======== BLOOD OVERLAY INITIALIZED ========");
+		PsyCore_Log.Get("DME_Cold").Info("======== BLOOD OVERLAY INITIALIZED ========");
 	}
 
 	/**
@@ -347,15 +352,15 @@ modded class MissionGameplay
 						bloodAlpha = m_DME_BloodOverlay.GetCurrentAlpha();
 					}
 
-					Print("[DME_Cold] ============ DEBUG ============");
-					Print("[DME_Cold] RAW VALUES:");
-					Print("[DME_Cold]   HeatComfort: " + heatComfortRaw.ToString() + " | HeatBuffer: " + heatBufferRaw.ToString() + " | HeatStage: " + heatStage.ToString());
-					Print("[DME_Cold]   Toxicity: " + toxicityRaw.ToString() + " | Blood(GetHealth): " + bloodValueDebug.ToString() + " | Blood(Used): " + bloodRaw.ToString());
-					Print("[DME_Cold] OVERLAY STATES:");
-					Print("[DME_Cold]   Frost:  Level=" + frostLevel.ToString() + " Alpha=" + frostAlpha.ToString() + " (Enabled=" + config.EnableFrostEffect.ToString() + ")");
-					Print("[DME_Cold]   Toxic:  Level=" + toxicLevel.ToString() + " Alpha=" + toxicAlpha.ToString() + " (Enabled=" + config.EnableToxicEffect.ToString() + ")");
-					Print("[DME_Cold]   Blood:  Level=" + bloodLevel.ToString() + " Alpha=" + bloodAlpha.ToString() + " (Enabled=" + config.EnableBloodEffect.ToString() + ")");
-					Print("[DME_Cold] ==================================");
+					PsyCore_Log.Get("DME_Cold").Info("============ DEBUG ============");
+					PsyCore_Log.Get("DME_Cold").Info("RAW VALUES:");
+					PsyCore_Log.Get("DME_Cold").Info("  HeatComfort: " + heatComfortRaw.ToString() + " | HeatBuffer: " + heatBufferRaw.ToString() + " | HeatStage: " + heatStage.ToString());
+					PsyCore_Log.Get("DME_Cold").Info("  Toxicity: " + toxicityRaw.ToString() + " | Blood(GetHealth): " + bloodValueDebug.ToString() + " | Blood(Used): " + bloodRaw.ToString());
+					PsyCore_Log.Get("DME_Cold").Info("OVERLAY STATES:");
+					PsyCore_Log.Get("DME_Cold").Info("  Frost:  Level=" + frostLevel.ToString() + " Alpha=" + frostAlpha.ToString() + " (Enabled=" + config.EnableFrostEffect.ToString() + ")");
+					PsyCore_Log.Get("DME_Cold").Info("  Toxic:  Level=" + toxicLevel.ToString() + " Alpha=" + toxicAlpha.ToString() + " (Enabled=" + config.EnableToxicEffect.ToString() + ")");
+					PsyCore_Log.Get("DME_Cold").Info("  Blood:  Level=" + bloodLevel.ToString() + " Alpha=" + bloodAlpha.ToString() + " (Enabled=" + config.EnableBloodEffect.ToString() + ")");
+					PsyCore_Log.Get("DME_Cold").Info("==================================");
 
 					m_DME_DebugTimer = 0;
 				}
@@ -368,20 +373,19 @@ modded class MissionGameplay
 	 */
 	protected void DME_OnReloadKeyPressed()
 	{
-		Print("[DME_Cold] Client: Admin reload key pressed (Numpad 8)");
+		PsyCore_Log.Get("DME_Cold").Info("Client: Admin reload key pressed (Numpad 8)");
 
 		// Get player
 		PlayerBase player = PlayerBase.Cast(g_Game.GetPlayer());
 		if (!player)
 		{
-			Print("[DME_Cold] Client: No player found!");
+			PsyCore_Log.Get("DME_Cold").Info("Client: No player found!");
 			return;
 		}
 
-		Print("[DME_Cold] Client: Sending reload request to server...");
+		PsyCore_Log.Get("DME_Cold").Info("Client: Sending reload request to server...");
 
-		// Send RPC to server
-		Param1<bool> params = new Param1<bool>(true);
-		g_Game.RPCSingleParam(player, DME_COLD_RPC_RELOAD_REQUEST, params, true);
+		// Send RPC to server (the server answers with DME_COLD_RPC_RELOAD_RESPONSE)
+		PsyCore_RPC.SendEmpty(DME_COLD_RPC_NS, DME_COLD_RPC_RELOAD_REQUEST);
 	}
 }

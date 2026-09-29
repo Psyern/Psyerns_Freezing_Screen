@@ -6,7 +6,7 @@
  * 
  * IMPORTANT: Config is loaded on SERVER only, then synced to clients via RPC.
  */
-class DME_ColdConfig
+class DME_ColdConfig : PsyCore_ConfigBase
 {
 	// Config version for future compatibility
 	int ConfigVersion = 1;
@@ -90,6 +90,22 @@ class DME_ColdConfig
 	float BloodMinAlpha = 0.1;
 	float BloodMaxAlpha = 0.8;
 
+	// PsyCore_ConfigBase: the version field keeps its existing JSON name "ConfigVersion"
+	override int GetVersion()
+	{
+		return ConfigVersion;
+	}
+
+	override void SetVersion(int version)
+	{
+		ConfigVersion = version;
+	}
+
+	override int GetCurrentVersion()
+	{
+		return 1;
+	}
+
 	// Singleton instance
 	private static ref DME_ColdConfig s_Instance;
 
@@ -117,7 +133,7 @@ class DME_ColdConfig
 			else
 			{
 				s_Instance = new DME_ColdConfig();
-				Print("[DME_Cold] Client: Using default config until server sync");
+				PsyCore_Log.Get("DME_Cold").Info("Client: Using default config until server sync");
 			}
 		}
 		return s_Instance;
@@ -151,17 +167,17 @@ class DME_ColdConfig
 		s_ConfigSynced = true;
 		s_SyncCount++;
 
-		Print("[DME_Cold] Client: Config synced from server!");
-		Print("[DME_Cold]   EnableFrostEffect: " + s_Instance.EnableFrostEffect.ToString());
-		Print("[DME_Cold]   EnableToxicEffect: " + s_Instance.EnableToxicEffect.ToString());
-		Print("[DME_Cold]   EnableBloodEffect: " + s_Instance.EnableBloodEffect.ToString());
-		Print("[DME_Cold]   DebugEnabled: " + s_Instance.DebugEnabled.ToString());
-		Print("[DME_Cold]   DebugForceFrostLevel: " + s_Instance.DebugForceFrostLevel.ToString());
-		Print("[DME_Cold]   DebugForceToxicLevel: " + s_Instance.DebugForceToxicLevel.ToString());
-		Print("[DME_Cold]   DebugForceBloodLevel: " + s_Instance.DebugForceBloodLevel.ToString());
-		Print("[DME_Cold]   TransitionSpeed: " + s_Instance.TransitionSpeed.ToString());
-		Print("[DME_Cold]   MinAlpha: " + s_Instance.MinAlpha.ToString());
-		Print("[DME_Cold]   MaxAlpha: " + s_Instance.MaxAlpha.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("Client: Config synced from server!");
+		PsyCore_Log.Get("DME_Cold").Info("  EnableFrostEffect: " + s_Instance.EnableFrostEffect.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  EnableToxicEffect: " + s_Instance.EnableToxicEffect.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  EnableBloodEffect: " + s_Instance.EnableBloodEffect.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  DebugEnabled: " + s_Instance.DebugEnabled.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  DebugForceFrostLevel: " + s_Instance.DebugForceFrostLevel.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  DebugForceToxicLevel: " + s_Instance.DebugForceToxicLevel.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  DebugForceBloodLevel: " + s_Instance.DebugForceBloodLevel.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  TransitionSpeed: " + s_Instance.TransitionSpeed.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  MinAlpha: " + s_Instance.MinAlpha.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  MaxAlpha: " + s_Instance.MaxAlpha.ToString());
 	}
 
 	/**
@@ -172,21 +188,21 @@ class DME_ColdConfig
 	{
 		if (!g_Game || !g_Game.IsServer())
 		{
-			Print("[DME_Cold] ReloadConfigFromFile can only be called on server!");
+			PsyCore_Log.Get("DME_Cold").Info("ReloadConfigFromFile can only be called on server!");
 			return;
 		}
 
-		Print("[DME_Cold] Server: Reloading config from file...");
+		PsyCore_Log.Get("DME_Cold").Info("Server: Reloading config from file...");
 
 		// Create new instance and load from file
 		s_Instance = LoadFromFile();
 		s_ConfigSynced = true;
 
-		Print("[DME_Cold] Server: Config reloaded successfully!");
-		Print("[DME_Cold]   EnableFrostEffect: " + s_Instance.EnableFrostEffect.ToString());
-		Print("[DME_Cold]   EnableToxicEffect: " + s_Instance.EnableToxicEffect.ToString());
-		Print("[DME_Cold]   EnableBloodEffect: " + s_Instance.EnableBloodEffect.ToString());
-		Print("[DME_Cold]   DebugEnabled: " + s_Instance.DebugEnabled.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("Server: Config reloaded successfully!");
+		PsyCore_Log.Get("DME_Cold").Info("  EnableFrostEffect: " + s_Instance.EnableFrostEffect.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  EnableToxicEffect: " + s_Instance.EnableToxicEffect.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  EnableBloodEffect: " + s_Instance.EnableBloodEffect.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  DebugEnabled: " + s_Instance.DebugEnabled.ToString());
 	}
 
 	/**
@@ -295,7 +311,7 @@ class DME_ColdConfig
 	{
 		if (!g_Game || !g_Game.IsServer())
 		{
-			Print("[DME_Cold] WARNING: Reload() called on client - ignored");
+			PsyCore_Log.Get("DME_Cold").Warn("Reload() called on client - ignored");
 			return;
 		}
 		s_Instance = null;
@@ -327,40 +343,29 @@ class DME_ColdConfig
 	static DME_ColdConfig LoadFromFile()
 	{
 		string configPath = GetConfigPath();
-		DME_ColdConfig config = new DME_ColdConfig();
+		bool existed = FileExist(configPath);
+		PsyCore_Log.Get("DME_Cold").Info("Attempting to load config from: " + configPath);
 
-		Print("[DME_Cold] Attempting to load config from: " + configPath);
-
-		if (FileExist(configPath))
+		// Existing files are never rewritten (a broken file stays untouched so the admin can fix it)
+		DME_ColdConfig config;
+		bool loaded = PsyCore_ConfigLoader<DME_ColdConfig>.Load(configPath, config, "", "DME_Cold", false);
+		if (loaded)
 		{
-			Print("[DME_Cold] Config file found, loading...");
-			string loadError;
-			if (!JsonFileLoader<DME_ColdConfig>.LoadFile(configPath, config, loadError) || !config)
-			{
-				// Keep the broken file untouched so the admin can fix it
-				Print("[DME_Cold] ERROR: Failed to load config, using defaults: " + loadError);
-				config = new DME_ColdConfig();
-			}
-			else
-			{
-				Print("[DME_Cold] Configuration loaded from: " + configPath);
-				config.PrintValues();
-			}
+			PsyCore_Log.Get("DME_Cold").Info("Configuration loaded from: " + configPath);
+			config.PrintValues();
 		}
-		else
+		else if (!existed)
 		{
-			// Create default config - values already set by class initializers above
-			Print("[DME_Cold] Config file not found, creating default...");
+			PsyCore_Log.Get("DME_Cold").Info("Config file not found, creating default...");
 			config.Save();
-			Print("[DME_Cold] Default config saved");
 		}
 
 		// Log debug status
 		if (config.DebugEnabled)
 		{
-			Print("[DME_Cold] ======== DEBUG MODE ENABLED ========");
-			Print("[DME_Cold] If DebugForceFrostLevel is > 0, that level will be forced");
-			Print("[DME_Cold] Current forced level: " + config.DebugForceFrostLevel.ToString());
+			PsyCore_Log.Get("DME_Cold").Info("======== DEBUG MODE ENABLED ========");
+			PsyCore_Log.Get("DME_Cold").Info("If DebugForceFrostLevel is > 0, that level will be forced");
+			PsyCore_Log.Get("DME_Cold").Info("Current forced level: " + config.DebugForceFrostLevel.ToString());
 		}
 
 		return config;
@@ -371,24 +376,24 @@ class DME_ColdConfig
 	 */
 	void PrintValues()
 	{
-		Print("[DME_Cold] LOADED CONFIG VALUES:");
-		Print("[DME_Cold]   EnableFrostEffect: " + EnableFrostEffect.ToString());
-		Print("[DME_Cold]   EnableToxicEffect: " + EnableToxicEffect.ToString());
-		Print("[DME_Cold]   EnableBloodEffect: " + EnableBloodEffect.ToString());
-		Print("[DME_Cold]   DebugEnabled: " + DebugEnabled.ToString());
-		Print("[DME_Cold]   DebugForceFrostLevel: " + DebugForceFrostLevel.ToString());
-		Print("[DME_Cold]   DebugForceToxicLevel: " + DebugForceToxicLevel.ToString());
-		Print("[DME_Cold]   DebugForceBloodLevel: " + DebugForceBloodLevel.ToString());
-		Print("[DME_Cold]   DebugLogTemperature: " + DebugLogTemperature.ToString());
-		Print("[DME_Cold]   TransitionSpeed: " + TransitionSpeed.ToString());
-		Print("[DME_Cold]   MinAlpha: " + MinAlpha.ToString());
-		Print("[DME_Cold]   MaxAlpha: " + MaxAlpha.ToString());
-		Print("[DME_Cold]   ToxicTransitionSpeed: " + ToxicTransitionSpeed.ToString());
-		Print("[DME_Cold]   ToxicMinAlpha: " + ToxicMinAlpha.ToString());
-		Print("[DME_Cold]   ToxicMaxAlpha: " + ToxicMaxAlpha.ToString());
-		Print("[DME_Cold]   BloodTransitionSpeed: " + BloodTransitionSpeed.ToString());
-		Print("[DME_Cold]   BloodMinAlpha: " + BloodMinAlpha.ToString());
-		Print("[DME_Cold]   BloodMaxAlpha: " + BloodMaxAlpha.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("LOADED CONFIG VALUES:");
+		PsyCore_Log.Get("DME_Cold").Info("  EnableFrostEffect: " + EnableFrostEffect.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  EnableToxicEffect: " + EnableToxicEffect.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  EnableBloodEffect: " + EnableBloodEffect.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  DebugEnabled: " + DebugEnabled.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  DebugForceFrostLevel: " + DebugForceFrostLevel.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  DebugForceToxicLevel: " + DebugForceToxicLevel.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  DebugForceBloodLevel: " + DebugForceBloodLevel.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  DebugLogTemperature: " + DebugLogTemperature.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  TransitionSpeed: " + TransitionSpeed.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  MinAlpha: " + MinAlpha.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  MaxAlpha: " + MaxAlpha.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  ToxicTransitionSpeed: " + ToxicTransitionSpeed.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  ToxicMinAlpha: " + ToxicMinAlpha.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  ToxicMaxAlpha: " + ToxicMaxAlpha.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  BloodTransitionSpeed: " + BloodTransitionSpeed.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  BloodMinAlpha: " + BloodMinAlpha.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("  BloodMaxAlpha: " + BloodMaxAlpha.ToString());
 	}
 
 	/**
@@ -396,29 +401,8 @@ class DME_ColdConfig
 	 */
 	void Save()
 	{
-		string configDir = GetConfigDir();
-		string configPath = GetConfigPath();
-
-		// Create directory if it doesn't exist
-		if (!FileExist(configDir))
-		{
-			if (MakeDirectory(configDir))
-			{
-				Print("[DME_Cold] Created config directory: " + configDir);
-			}
-			else
-			{
-				Print("[DME_Cold] WARNING: Could not create config directory: " + configDir);
-			}
-		}
-
-		string saveError;
-		if (!JsonFileLoader<DME_ColdConfig>.SaveFile(configPath, this, saveError))
-		{
-			Print("[DME_Cold] ERROR: Failed to save config: " + saveError);
-			return;
-		}
-		Print("[DME_Cold] Configuration saved to: " + configPath);
+		if (PsyCore_ConfigLoader<DME_ColdConfig>.Save(GetConfigPath(), this, "DME_Cold"))
+			PsyCore_Log.Get("DME_Cold").Info("Configuration saved to: " + GetConfigPath());
 	}
 
 	/**
@@ -428,7 +412,7 @@ class DME_ColdConfig
 	{
 		if (DebugEnabled || DebugLogTemperature)
 		{
-			Print("[DME_Cold DEBUG] " + message);
+			PsyCore_Log.Get("DME_Cold").Force("DEBUG " + message);
 		}
 	}
 }

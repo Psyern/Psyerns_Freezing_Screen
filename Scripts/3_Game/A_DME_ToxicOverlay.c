@@ -17,7 +17,7 @@ class DME_ToxicOverlay
 
 	void DME_ToxicOverlay()
 	{
-		Print("[DME_Cold] DME_ToxicOverlay constructor called");
+		PsyCore_Log.Get("DME_Cold").Info("DME_ToxicOverlay constructor called");
 		m_IsInitialized = false;
 		m_CurrentAlpha = 0.0;
 		m_CurrentToxicLevelFloat = 0.0;
@@ -27,7 +27,7 @@ class DME_ToxicOverlay
 
 	void ~DME_ToxicOverlay()
 	{
-		Print("[DME_Cold] Cleaning up toxic overlay");
+		PsyCore_Log.Get("DME_Cold").Info("Cleaning up toxic overlay");
 		DestroyOverlay();
 	}
 
@@ -44,11 +44,11 @@ class DME_ToxicOverlay
 
 	bool CreateOverlay()
 	{
-		Print("[DME_Cold] ToxicOverlay CreateOverlay called");
+		PsyCore_Log.Get("DME_Cold").Info("ToxicOverlay CreateOverlay called");
 
 		if (m_IsInitialized)
 		{
-			Print("[DME_Cold] Toxic overlay already initialized");
+			PsyCore_Log.Get("DME_Cold").Info("Toxic overlay already initialized");
 			return true;
 		}
 
@@ -59,11 +59,11 @@ class DME_ToxicOverlay
 		WorkspaceWidget workspace = g_Game.GetWorkspace();
 		if (!workspace)
 		{
-			Print("[DME_Cold] ERROR: No workspace available for toxic overlay");
+			PsyCore_Log.Get("DME_Cold").Error("No workspace available for toxic overlay");
 			return false;
 		}
 
-		Print("[DME_Cold] Creating toxic overlay widget...");
+		PsyCore_Log.Get("DME_Cold").Info("Creating toxic overlay widget...");
 
 		// Create image widget directly on the workspace
 		// Use z-order -9 to be slightly above frost overlay (-10) but still behind UI
@@ -73,7 +73,7 @@ class DME_ToxicOverlay
 
 		if (!imgWidget)
 		{
-			Print("[DME_Cold] ERROR: Failed to create toxic image widget");
+			PsyCore_Log.Get("DME_Cold").Error("Failed to create toxic image widget");
 			return false;
 		}
 
@@ -82,7 +82,7 @@ class DME_ToxicOverlay
 
 		if (!m_ToxicImage)
 		{
-			Print("[DME_Cold] ERROR: Failed to cast to ImageWidget for toxic");
+			PsyCore_Log.Get("DME_Cold").Error("Failed to cast to ImageWidget for toxic");
 			DestroyOverlay();
 			return false;
 		}
@@ -95,17 +95,17 @@ class DME_ToxicOverlay
 		m_ToxicImage.SetScreenSize(screenW, screenH);
 		m_ToxicImage.SetScreenPos(0, 0);
 
-		Print("[DME_Cold] Toxic ImageWidget created - Screen size: " + screenW.ToString() + "x" + screenH.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("Toxic ImageWidget created - Screen size: " + screenW.ToString() + "x" + screenH.ToString());
 
 		// Load the toxic texture
 		bool textureLoaded = m_ToxicImage.LoadImageFile(0, "DME_Cold/GUI/textures/toxic1.paa");
 		if (!textureLoaded)
 		{
-			Print("[DME_Cold] WARNING: Could not load toxic1.paa");
+			PsyCore_Log.Get("DME_Cold").Warn("Could not load toxic1.paa");
 		}
 		else
 		{
-			Print("[DME_Cold] Toxic texture loaded successfully");
+			PsyCore_Log.Get("DME_Cold").Info("Toxic texture loaded successfully");
 			m_ToxicImage.SetFlags(m_ToxicImage.GetFlags() | WidgetFlags.STRETCH);
 		}
 
@@ -115,7 +115,7 @@ class DME_ToxicOverlay
 		m_ToxicImage.Show(true);
 
 		m_IsInitialized = true;
-		Print("[DME_Cold] Toxic overlay initialization complete!");
+		PsyCore_Log.Get("DME_Cold").Info("Toxic overlay initialization complete!");
 
 		return true;
 	}
@@ -168,7 +168,7 @@ class DME_ToxicOverlay
 			m_DebugLogTimer += deltaTime;
 			if (m_DebugLogTimer >= DEBUG_LOG_INTERVAL)
 			{
-				Print("[DME_Cold] Toxicity: " + toxicityRaw.ToString() + " ToxicFloat: " + m_CurrentToxicLevelFloat.ToString() + " Image: " + m_CurrentImageLevel.ToString() + " Alpha: " + m_CurrentAlpha.ToString());
+				PsyCore_Log.Get("DME_Cold").Info("Toxicity: " + toxicityRaw.ToString() + " ToxicFloat: " + m_CurrentToxicLevelFloat.ToString() + " Image: " + m_CurrentImageLevel.ToString() + " Alpha: " + m_CurrentAlpha.ToString());
 				m_DebugLogTimer = 0.0;
 			}
 		}
@@ -225,11 +225,11 @@ class DME_ToxicOverlay
 		if (loaded)
 		{
 			m_CurrentImageLevel = targetImageLevel;
-			Print("[DME_Cold] Switched to toxic image: " + imagePath);
+			PsyCore_Log.Get("DME_Cold").Info("Switched to toxic image: " + imagePath);
 		}
 		else
 		{
-			Print("[DME_Cold] WARNING: Failed to load " + imagePath);
+			PsyCore_Log.Get("DME_Cold").Warn("Failed to load " + imagePath);
 		}
 	}
 

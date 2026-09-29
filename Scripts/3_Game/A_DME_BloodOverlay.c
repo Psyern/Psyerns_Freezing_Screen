@@ -21,7 +21,7 @@ class DME_BloodOverlay
 
 	void DME_BloodOverlay()
 	{
-		Print("[DME_Cold] DME_BloodOverlay constructor called");
+		PsyCore_Log.Get("DME_Cold").Info("DME_BloodOverlay constructor called");
 		m_IsInitialized = false;
 		m_CurrentAlpha = 0.0;
 		m_CurrentBloodLevelFloat = 0.0;
@@ -31,7 +31,7 @@ class DME_BloodOverlay
 
 	void ~DME_BloodOverlay()
 	{
-		Print("[DME_Cold] Cleaning up blood overlay");
+		PsyCore_Log.Get("DME_Cold").Info("Cleaning up blood overlay");
 		DestroyOverlay();
 	}
 
@@ -48,11 +48,11 @@ class DME_BloodOverlay
 
 	bool CreateOverlay()
 	{
-		Print("[DME_Cold] BloodOverlay CreateOverlay called");
+		PsyCore_Log.Get("DME_Cold").Info("BloodOverlay CreateOverlay called");
 
 		if (m_IsInitialized)
 		{
-			Print("[DME_Cold] Blood overlay already initialized");
+			PsyCore_Log.Get("DME_Cold").Info("Blood overlay already initialized");
 			return true;
 		}
 
@@ -63,11 +63,11 @@ class DME_BloodOverlay
 		WorkspaceWidget workspace = g_Game.GetWorkspace();
 		if (!workspace)
 		{
-			Print("[DME_Cold] ERROR: No workspace available for blood overlay");
+			PsyCore_Log.Get("DME_Cold").Error("No workspace available for blood overlay");
 			return false;
 		}
 
-		Print("[DME_Cold] Creating blood overlay widget...");
+		PsyCore_Log.Get("DME_Cold").Info("Creating blood overlay widget...");
 
 		// Create image widget directly on the workspace
 		// Use z-order -8 to be above toxic overlay (-9) but still behind UI
@@ -77,7 +77,7 @@ class DME_BloodOverlay
 
 		if (!imgWidget)
 		{
-			Print("[DME_Cold] ERROR: Failed to create blood image widget");
+			PsyCore_Log.Get("DME_Cold").Error("Failed to create blood image widget");
 			return false;
 		}
 
@@ -86,7 +86,7 @@ class DME_BloodOverlay
 
 		if (!m_BloodImage)
 		{
-			Print("[DME_Cold] ERROR: Failed to cast to ImageWidget for blood");
+			PsyCore_Log.Get("DME_Cold").Error("Failed to cast to ImageWidget for blood");
 			DestroyOverlay();
 			return false;
 		}
@@ -99,17 +99,17 @@ class DME_BloodOverlay
 		m_BloodImage.SetScreenSize(screenW, screenH);
 		m_BloodImage.SetScreenPos(0, 0);
 
-		Print("[DME_Cold] Blood ImageWidget created - Screen size: " + screenW.ToString() + "x" + screenH.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("Blood ImageWidget created - Screen size: " + screenW.ToString() + "x" + screenH.ToString());
 
 		// Load the blood texture
 		bool textureLoaded = m_BloodImage.LoadImageFile(0, "DME_Cold/GUI/textures/blood1.paa");
 		if (!textureLoaded)
 		{
-			Print("[DME_Cold] WARNING: Could not load blood1.paa");
+			PsyCore_Log.Get("DME_Cold").Warn("Could not load blood1.paa");
 		}
 		else
 		{
-			Print("[DME_Cold] Blood texture loaded successfully");
+			PsyCore_Log.Get("DME_Cold").Info("Blood texture loaded successfully");
 			m_BloodImage.SetFlags(m_BloodImage.GetFlags() | WidgetFlags.STRETCH);
 		}
 
@@ -119,7 +119,7 @@ class DME_BloodOverlay
 		m_BloodImage.Show(true);
 
 		m_IsInitialized = true;
-		Print("[DME_Cold] Blood overlay initialization complete!");
+		PsyCore_Log.Get("DME_Cold").Info("Blood overlay initialization complete!");
 
 		return true;
 	}
@@ -181,7 +181,7 @@ class DME_BloodOverlay
 			m_DebugLogTimer += deltaTime;
 			if (m_DebugLogTimer >= DEBUG_LOG_INTERVAL)
 			{
-				Print("[DME_Cold] Blood: " + bloodRaw.ToString() + " BloodFloat: " + m_CurrentBloodLevelFloat.ToString() + " Image: " + m_CurrentImageLevel.ToString() + " Alpha: " + m_CurrentAlpha.ToString());
+				PsyCore_Log.Get("DME_Cold").Info("Blood: " + bloodRaw.ToString() + " BloodFloat: " + m_CurrentBloodLevelFloat.ToString() + " Image: " + m_CurrentImageLevel.ToString() + " Alpha: " + m_CurrentAlpha.ToString());
 				m_DebugLogTimer = 0.0;
 			}
 		}
@@ -289,11 +289,11 @@ class DME_BloodOverlay
 		if (loaded)
 		{
 			m_CurrentImageLevel = targetImageLevel;
-			Print("[DME_Cold] Switched to blood image: " + imagePath);
+			PsyCore_Log.Get("DME_Cold").Info("Switched to blood image: " + imagePath);
 		}
 		else
 		{
-			Print("[DME_Cold] WARNING: Failed to load " + imagePath);
+			PsyCore_Log.Get("DME_Cold").Warn("Failed to load " + imagePath);
 		}
 	}
 

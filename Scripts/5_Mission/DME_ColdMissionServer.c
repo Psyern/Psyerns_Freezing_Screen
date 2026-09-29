@@ -1,61 +1,37 @@
 /**
  * DME_ColdMissionServer
- * 
- * Extends MissionServer to handle config synchronization to clients.
- * Sends config to clients when they connect.
+ *
+ * Server side: loads the config, imports the legacy admin list into the Psyerns Core admin list,
+ * registers the RPC handlers and sends the config to every connecting client.
  */
 modded class MissionServer
 {
-	/**
-	 * Called when the mission starts on SERVER
-	 */
+	protected ref DME_ColdRpc m_DME_ColdRpc;
+
 	override void OnMissionStart()
 	{
 		super.OnMissionStart();
 
-		Print("[DME_Cold] ======== SERVER MISSION START ========");
+		PsyCore_Log.Get("DME_Cold").Info("======== SERVER MISSION START ========");
 
-		// Register reload handler callback
-		DME_ColdReloadHandler.GetOnReloadRequest().Insert(DME_OnReloadRequestCallback);
-		Print("[DME_Cold] Server: Reload handler registered");
+		DME_ColdAdminConfig.ImportIntoCore();
+		m_DME_ColdRpc = new DME_ColdRpc(true);
 
-		// Load config on server
 		DME_ColdConfig config = DME_ColdConfig.GetInstance();
 		if (config)
 		{
-			Print("[DME_Cold] Server: Config loaded successfully");
-			Print("[DME_Cold] Server: EnableFrostEffect = " + config.EnableFrostEffect.ToString());
-			Print("[DME_Cold] Server: DebugForceFrostLevel = " + config.DebugForceFrostLevel.ToString());
+			PsyCore_Log.Get("DME_Cold").Info("Server: Config loaded successfully");
+			PsyCore_Log.Get("DME_Cold").Info("Server: EnableFrostEffect = " + config.EnableFrostEffect.ToString());
+			PsyCore_Log.Get("DME_Cold").Info("Server: DebugForceFrostLevel = " + config.DebugForceFrostLevel.ToString());
 		}
 		else
 		{
-			Print("[DME_Cold] Server: ERROR - Config is null!");
+			PsyCore_Log.Get("DME_Cold").Error("Server: Config is null!");
 		}
 
-		Print("[DME_Cold] ======== SERVER READY ========");
+		PsyCore_Log.Get("DME_Cold").Info("======== SERVER READY ========");
 	}
 
-	/**
-	 * Called when the mission ends on SERVER
-	 */
-	override void OnMissionFinish()
-	{
-		DME_ColdReloadHandler.GetOnReloadRequest().Remove(DME_OnReloadRequestCallback);
-
-		super.OnMissionFinish();
-	}
-
-	/**
-	 * Callback when a reload request is received from a client
-	 */
-	void DME_OnReloadRequestCallback(PlayerBase player, PlayerIdentity identity)
-	{
-		DME_HandleReloadRequest(player, identity);
-	}
-
-	/**
-	 * Called when a player connects - send them the config
-	 */
 	override void InvokeOnConnect(PlayerBase player, PlayerIdentity identity)
 	{
 		super.InvokeOnConnect(player, identity);
@@ -63,113 +39,6 @@ modded class MissionServer
 		if (!player || !identity)
 			return;
 
-		// Send config to this player
-		DME_SendConfigToClient(player, identity);
-	}
-
-	/**
-	 * Send the config to a specific client
-	 */
-	void DME_SendConfigToClient(PlayerBase player, PlayerIdentity identity)
-	{
-		if (!player || !identity)
-			return;
-
-		DME_ColdConfig config = DME_ColdConfig.GetInstance();
-		if (!config)
-		{
-			Print("[DME_Cold] Server: Cannot send config - config is null!");
-			return;
-		}
-
-		Print("[DME_Cold] Server: Sending config to player: " + identity.GetName());
-
-		// Create RPC and send config to the player object
-		ScriptRPC rpc = new ScriptRPC();
-		config.WriteToParams(rpc);
-		rpc.Send(player, DME_COLD_RPC_SYNC_CONFIG, true, identity);
-
-		Print("[DME_Cold] Server: Config sent to " + identity.GetName());
-	}
-
-	/**
-	 * Send config to all connected players (useful for config reload)
-	 */
-	void DME_SendConfigToAllClients()
-	{
-		DME_ColdConfig config = DME_ColdConfig.GetInstance();
-		if (!config)
-			return;
-
-		Print("[DME_Cold] Server: Broadcasting config to all clients...");
-
-		// Iterate all players and send config to each
-		array<Man> players = new array<Man>();
-		g_Game.GetPlayers(players);
-
-		foreach (Man man : players)
-		{
-			PlayerBase player = PlayerBase.Cast(man);
-			if (player)
-			{
-				PlayerIdentity identity = player.GetIdentity();
-				if (identity)
-				{
-					ScriptRPC rpc = new ScriptRPC();
-					config.WriteToParams(rpc);
-					rpc.Send(player, DME_COLD_RPC_SYNC_CONFIG, true, identity);
-				}
-			}
-		}
-
-		Print("[DME_Cold] Server: Config broadcast complete - sent to " + players.Count().ToString() + " players");
-	}
-
-	/**
-	 * Handle admin reload request from client
-	 */
-	void DME_HandleReloadRequest(PlayerBase player, PlayerIdentity identity)
-	{
-		if (!player || !identity)
-			return;
-
-		string playerName = identity.GetName();
-		string playerGUID = identity.GetId();
-
-		Print("[DME_Cold] Server: Reload request from " + playerName + " (GUID: " + playerGUID + ", Steam64: " + identity.GetPlainId() + ")");
-
-		// Check if player is admin
-		DME_ColdAdminConfig adminConfig = DME_ColdAdminConfig.Load();
-		if (!adminConfig || !adminConfig.IsPlayerAdmin(identity))
-		{
-			Print("[DME_Cold] Server: Player " + playerName + " is NOT an admin - request denied!");
-			DME_SendReloadResponse(player, identity, false, "You are not an admin");
-			return;
-		}
-
-		Print("[DME_Cold] Server: Player " + playerName + " IS an admin - reloading config...");
-
-		// Force reload config from file
-		DME_ColdConfig.ReloadConfigFromFile();
-
-		// Broadcast new config to all clients
-		DME_SendConfigToAllClients();
-
-		// Send success response
-		DME_SendReloadResponse(player, identity, true, "Config reloaded and synced to all players");
-
-		Print("[DME_Cold] Server: Config reload complete!");
-	}
-
-	/**
-	 * Send reload response to client
-	 */
-	void DME_SendReloadResponse(PlayerBase player, PlayerIdentity identity, bool success, string message)
-	{
-		if (!player || !identity)
-			return;
-
-		Param2<bool, string> params = new Param2<bool, string>(success, message);
-		g_Game.RPCSingleParam(player, DME_COLD_RPC_RELOAD_RESPONSE, params, true, identity);
+		DME_ColdRpc.SendConfigTo(player, identity);
 	}
 }

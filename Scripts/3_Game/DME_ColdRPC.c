@@ -1,22 +1,23 @@
 /**
  * DME_ColdRPC
- * 
- * RPC constants and helper for DME_Cold mod.
- * Used for Server -> Client config synchronization.
+ *
+ * RPC names for DME_Cold. All messages go through the Psyerns Core RPC router
+ * (PsyCore_RPC, namespace DME_COLD_RPC_NS) - no raw RPC ids any more.
  */
 
-// RPC IDs for DME_Cold
-// Using high numbers to avoid conflicts with other mods
-const int DME_COLD_RPC_SYNC_CONFIG = 0x444D4530; // "DME0" in hex
+const string DME_COLD_RPC_NS = "DME_Cold";
 
-// RPC ID for admin reload request (client -> server)
-const int DME_COLD_RPC_RELOAD_REQUEST = 0x444D4531; // "DME1" in hex
+// server -> client: full config (raw payload written by DME_ColdConfig.WriteToParams)
+const string DME_COLD_RPC_SYNC_CONFIG = "SyncConfig";
 
-// RPC ID for admin reload response (server -> client)
-const int DME_COLD_RPC_RELOAD_RESPONSE = 0x444D4532; // "DME2" in hex
+// client -> server: admin reload request
+const string DME_COLD_RPC_RELOAD_REQUEST = "ReloadRequest";
 
-// RPC ID for player stat sync (server -> owning client): HeatComfort, Toxicity, Blood
-const int DME_COLD_RPC_SYNC_STATS = 0x444D4533; // "DME3" in hex
+// server -> client: reload result Param2<bool, string>
+const string DME_COLD_RPC_RELOAD_RESPONSE = "ReloadResponse";
+
+// server -> owning client: Param3<float, float, float> HeatComfort, Toxicity, Blood
+const string DME_COLD_RPC_SYNC_STATS = "SyncStats";
 
 // Stat sync timing (seconds): check interval and forced resend interval
 const float DME_COLD_STAT_SYNC_INTERVAL = 1.0;

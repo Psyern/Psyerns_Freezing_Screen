@@ -26,7 +26,7 @@ class DME_ColdFrostOverlay
 
 	void DME_ColdFrostOverlay()
 	{
-		Print("[DME_Cold] DME_ColdFrostOverlay constructor called");
+		PsyCore_Log.Get("DME_Cold").Info("DME_ColdFrostOverlay constructor called");
 		m_IsInitialized = false;
 		m_CurrentAlpha = 0.0;
 		m_TargetAlpha = 0.0;
@@ -41,7 +41,7 @@ class DME_ColdFrostOverlay
 
 	void ~DME_ColdFrostOverlay()
 	{
-		Print("[DME_Cold] Cleaning up frost overlay");
+		PsyCore_Log.Get("DME_Cold").Info("Cleaning up frost overlay");
 		DestroyDebugWidget();
 		DestroyOverlay();
 	}
@@ -92,13 +92,13 @@ class DME_ColdFrostOverlay
 			if (m_DebugText)
 			{
 				m_DebugText.SetText("DME_Cold Debug Loading...");
-				Print("[DME_Cold] Debug widget created from layout successfully");
+				PsyCore_Log.Get("DME_Cold").Info("Debug widget created from layout successfully");
 				return;
 			}
 		}
 
 		// Fallback: Create simple text widget directly
-		Print("[DME_Cold] Layout failed, creating simple TextWidget");
+		PsyCore_Log.Get("DME_Cold").Info("Layout failed, creating simple TextWidget");
 		int flags = WidgetFlags.VISIBLE | WidgetFlags.IGNOREPOINTER;
 		Widget textWidget = workspace.CreateWidget(TextWidgetTypeID, 0.01, 0.01, 0.5, 0.03, flags, ARGB(255, 0, 255, 0), 100);
 
@@ -110,12 +110,12 @@ class DME_ColdFrostOverlay
 			{
 				m_DebugText.SetColor(ARGB(255, 0, 255, 0));
 				m_DebugText.SetText("DME_Cold Debug");
-				Print("[DME_Cold] Fallback debug widget created");
+				PsyCore_Log.Get("DME_Cold").Info("Fallback debug widget created");
 			}
 		}
 		else
 		{
-			Print("[DME_Cold] ERROR: Failed to create any debug widget");
+			PsyCore_Log.Get("DME_Cold").Error("Failed to create any debug widget");
 		}
 	}
 
@@ -159,11 +159,11 @@ class DME_ColdFrostOverlay
 
 	bool CreateOverlay()
 	{
-		Print("[DME_Cold] CreateOverlay called");
+		PsyCore_Log.Get("DME_Cold").Info("CreateOverlay called");
 
 		if (m_IsInitialized)
 		{
-			Print("[DME_Cold] Overlay already initialized");
+			PsyCore_Log.Get("DME_Cold").Info("Overlay already initialized");
 			return true;
 		}
 
@@ -174,11 +174,11 @@ class DME_ColdFrostOverlay
 		WorkspaceWidget workspace = g_Game.GetWorkspace();
 		if (!workspace)
 		{
-			Print("[DME_Cold] ERROR: No workspace available");
+			PsyCore_Log.Get("DME_Cold").Error("No workspace available");
 			return false;
 		}
 
-		Print("[DME_Cold] Workspace found, creating widgets manually...");
+		PsyCore_Log.Get("DME_Cold").Info("Workspace found, creating widgets manually...");
 
 		// Create image widget directly on the workspace
 		// IGNOREPOINTER = don't block mouse clicks
@@ -190,7 +190,7 @@ class DME_ColdFrostOverlay
 
 		if (!imgWidget)
 		{
-			Print("[DME_Cold] ERROR: Failed to create image widget");
+			PsyCore_Log.Get("DME_Cold").Error("Failed to create image widget");
 			return false;
 		}
 
@@ -199,7 +199,7 @@ class DME_ColdFrostOverlay
 
 		if (!m_FrostImage)
 		{
-			Print("[DME_Cold] ERROR: Failed to cast to ImageWidget");
+			PsyCore_Log.Get("DME_Cold").Error("Failed to cast to ImageWidget");
 			DestroyOverlay();
 			return false;
 		}
@@ -213,26 +213,26 @@ class DME_ColdFrostOverlay
 		m_FrostImage.SetScreenSize(screenW, screenH);
 		m_FrostImage.SetScreenPos(0, 0);
 
-		Print("[DME_Cold] ImageWidget created - Screen size: " + screenW.ToString() + "x" + screenH.ToString());
+		PsyCore_Log.Get("DME_Cold").Info("ImageWidget created - Screen size: " + screenW.ToString() + "x" + screenH.ToString());
 
 		// Load the frost texture
 		bool textureLoaded = m_FrostImage.LoadImageFile(0, "DME_Cold/GUI/textures/Freeze1.paa");
 		if (!textureLoaded)
 		{
-			Print("[DME_Cold] Could not load Freeze1.paa, trying built-in texture...");
+			PsyCore_Log.Get("DME_Cold").Info("Could not load Freeze1.paa, trying built-in texture...");
 			// Try a different approach - use built-in texture
 			textureLoaded = m_FrostImage.LoadImageFile(0, "set:dayz_gui image:white");
 		}
 
 		if (textureLoaded)
 		{
-			Print("[DME_Cold] Texture loaded successfully");
+			PsyCore_Log.Get("DME_Cold").Info("Texture loaded successfully");
 			// Set image to STRETCH mode so it fills the entire widget
 			m_FrostImage.SetFlags(m_FrostImage.GetFlags() | WidgetFlags.STRETCH);
 		}
 		else
 		{
-			Print("[DME_Cold] WARNING: No texture loaded, overlay may not be visible");
+			PsyCore_Log.Get("DME_Cold").Warn("No texture loaded, overlay may not be visible");
 		}
 
 		// Set color with alpha for initial transparency
@@ -243,7 +243,7 @@ class DME_ColdFrostOverlay
 			// Start with visible alpha for debugging (128 = 50%)
 			m_FrostImage.SetColor(ARGB(128, 255, 255, 255));
 			m_CurrentAlpha = 0.5;
-			Print("[DME_Cold] Debug mode: Starting with alpha 0.5");
+			PsyCore_Log.Get("DME_Cold").Info("Debug mode: Starting with alpha 0.5");
 		}
 		else
 		{
@@ -253,7 +253,7 @@ class DME_ColdFrostOverlay
 		m_FrostImage.Show(true);
 
 		m_IsInitialized = true;
-		Print("[DME_Cold] Overlay initialization complete!");
+		PsyCore_Log.Get("DME_Cold").Info("Overlay initialization complete!");
 
 		return true;
 	}
@@ -323,7 +323,7 @@ class DME_ColdFrostOverlay
 			if (m_DebugLogTimer >= DEBUG_LOG_INTERVAL)
 			{
 				float effectiveTemp = CalculateEffectiveTemperature(playerHeatComfort);
-				Print("[DME_Cold] HeatComfort(raw): " + heatComfortRaw.ToString() + " HeatBuffer: " + heatBufferRaw.ToString() + " Used: " + playerHeatComfort.ToString() + " Temp: " + effectiveTemp.ToString() + " FrostFloat: " + m_CurrentFrostLevelFloat.ToString() + " Alpha: " + m_CurrentAlpha.ToString());
+				PsyCore_Log.Get("DME_Cold").Info("HeatComfort(raw): " + heatComfortRaw.ToString() + " HeatBuffer: " + heatBufferRaw.ToString() + " Used: " + playerHeatComfort.ToString() + " Temp: " + effectiveTemp.ToString() + " FrostFloat: " + m_CurrentFrostLevelFloat.ToString() + " Alpha: " + m_CurrentAlpha.ToString());
 				m_DebugLogTimer = 0.0;
 			}
 		}
@@ -384,11 +384,11 @@ class DME_ColdFrostOverlay
 		if (loaded)
 		{
 			m_CurrentImageLevel = targetImageLevel;
-			Print("[DME_Cold] Switched to frost image: " + imagePath);
+			PsyCore_Log.Get("DME_Cold").Info("Switched to frost image: " + imagePath);
 		}
 		else
 		{
-			Print("[DME_Cold] WARNING: Failed to load " + imagePath);
+			PsyCore_Log.Get("DME_Cold").Warn("Failed to load " + imagePath);
 		}
 	}
 
