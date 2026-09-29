@@ -18,7 +18,7 @@ A DayZ mod that adds visual overlay effects based on the player's body temperatu
 
 ## Requirements
 
-- DayZ Server (1.24+)
+- DayZ 1.29 or 1.30 (uses `g_Game`, `JsonFileLoader.LoadFile/SaveFile`)
 - No external mod dependencies!
 
 ## Installation
@@ -32,9 +32,9 @@ A DayZ mod that adds visual overlay effects based on the player's body temperatu
 Admins can reload the config in-game without restarting the server:
 
 1. **Setup Admin List**: Copy `dme_cold_admins.json.example` to `profiles/DeadmansEcho/dme_cold_admins.json`
-2. **Add your Steam64 ID** to the `AdminGUIDs` array
+2. **Add your Steam64 ID** to the `AdminGUIDs` array (the BI GUID from `PlayerIdentity.GetId()` is accepted as well)
 3. **Press Numpad 8** (default) in-game to reload config
-4. The keybind can be changed in **Options > Controls > DME Cold**
+4. The keybind can be changed in **Options > Controls > DME Cold** (registered via `Data/Inputs.xml` + `inputs=` in `config.cpp`, labels in `stringtable.csv`)
 
 Example `dme_cold_admins.json`:
 ```json
@@ -91,15 +91,14 @@ profiles/DeadmansEcho/DME_Overlay.json
 
 Set `DebugEnabled` to `true` in the config to see debug output in the log every 2 seconds:
 ```
-[DME_Cold] DEBUG: HeatComfort(raw)=-15.5 HeatBuffer=0.0 HeatStage=1 -> Normalized=-0.52 Toxicity=0.0 Blood=4500.0
-[DME_Cold] HeatComfort(raw): -15.5 HeatBuffer: 0.0 Used: -0.52 Temp: 31.4 FrostFloat: 3.6 Alpha: 0.42
+[DME_Cold]   HeatComfort: -0.52 | HeatBuffer: 0.0 | HeatStage: 0
+[DME_Cold] HeatComfort(raw): -0.52 HeatBuffer: 0.0 Used: -0.52 Temp: 31.36 FrostFloat: 3.6 Alpha: 0.42
 ```
 
 **Debug values explained:**
-- `HeatComfort(raw)`: The raw HeatComfort stat (-30 to +30)
+- `HeatComfort`: The HeatComfort stat (-1.0 to +1.0), sent by the server
 - `HeatBuffer`: The raw HeatBuffer stat (changes quickly near fire)
-- `HeatStage`: The discrete heat stage (0-4, fallback)
-- `Normalized`: HeatComfort divided by 30 (-1.0 to +1.0)
+- `HeatStage`: The heat buffer stage (informational only)
 - `Temp`: Calculated effective temperature in °C
 - `FrostFloat`: Current frost level as float (0.0-7.0)
 - `Alpha`: Current overlay opacity (0.0-1.0)
@@ -120,10 +119,12 @@ The mod uses a modular architecture across DayZ script modules:
   - `A_DME_ColdFrostOverlay.c`: Overlay widget, frost level calculation, alpha transitions
   - `DME_ColdConfig.c`: Configuration loading (server) and RPC serialization
   - `DME_ColdRPC.c`: RPC constants for server→client communication
-  
+  - `DME_ColdAdminConfig.c`: Admin list for the in-game reload
+
 - **4_World Module**: Entity integration
-  - `DME_ColdRPCHandler.c`: Modded PlayerBase that receives config sync RPC
-  - `B_DME_ColdManager.c`: Singleton manager
+  - `DME_ColdRPCHandler.c`: Modded PlayerBase that receives config/stat sync RPCs
+  - `DME_ColdPlayerStats.c`: Server sends HeatComfort, Toxicity and Blood to the owning client
+  - `DME_ColdReloadHandler.c`: Bridges the reload RPC (4_World) to MissionServer (5_Mission)
   
 - **5_Mission Module**: Lifecycle management
   - `DME_ColdMissionServer.c`: Loads config, sends to clients on connect
@@ -151,12 +152,20 @@ The mod uses a modular architecture across DayZ script modules:
 └─────────────────────────┘                    └─────────────────────────┘
 ```
 
+### Server → Client Stat Sync
+
+HeatComfort and Toxicity are **not** synced player stats in vanilla DayZ (only HeatBuffer is,
+see `PlayerStatsPCO_v130`), and the exact blood value is server-side. On a multiplayer client
+these values stay at their defaults. The server therefore checks them every second in
+`PlayerBase.OnScheduledTick` and sends them to the owning client (`DME_COLD_RPC_SYNC_STATS`)
+when they changed, at least every 10 seconds. In offline mode the values are read directly.
+
 ### Heat Detection
 
 The mod monitors the player's temperature using DayZ's native stat system:
 
 **HeatComfort** (Primary - used for frost level):
-- Range: -30 to +30 (normalized to -1.0 to +1.0)
+- Range: -1.0 to +1.0 (vanilla warning at -0.15, critical at -0.45)
 - **Negative values = Cold** → Frost appears
 - **Zero = Neutral** → No frost
 - **Positive values = Warm** → No frost
@@ -169,17 +178,13 @@ The mod monitors the player's temperature using DayZ's native stat system:
 - Affects how fast HeatComfort changes
 - Only shown in debug display
 
-**HeatBufferStage** (Fallback):
-- Discrete stages 0-4 (freezing to hot)
-- Used only if HeatComfort stat is not available
-
 ```
-HeatComfort (raw) → Normalized → Effective Temp → Frost Level
-     -30          →   -1.0     →    28°C        →    7 (max)
-     -15          →   -0.5     →    31.5°C      →    ~3-4
-       0          →    0.0     →    35°C        →    0 (none)
-     +15          →   +0.5     →    38.5°C      →    0 (none)
-     +30          →   +1.0     →    42°C        →    0 (none)
+HeatComfort → Effective Temp → Frost Level
+   -1.0     →    28°C        →    7 (max)
+   -0.5     →    31.5°C      →    ~3-4
+    0.0     →    35°C        →    0 (none)
+   +0.5     →    38.5°C      →    0 (none)
+   +1.0     →    42°C        →    0 (none)
 ```
 
 ### Toxicity Detection (Toxic Zones)
@@ -196,13 +201,11 @@ The mod monitors the player's toxicity level for gas zone effects:
 ```
 Toxicity (raw) → Toxic Level → Overlay
      0         →    0        → None
-    14         →    1        → Light green tint
-    28         →    2        → Moderate
-    42         →    3        → Noticeable
-    57         →    4        → Strong
-    71         →    5        → Heavy
-    85         →    6        → Severe
-   100         →    7        → Maximum (near death)
+    20         →    1        → Light green tint
+    40         →    2        → Moderate
+    60         →    3        → Noticeable
+    80         →    4        → Strong
+   100         →    5        → Maximum
 ```
 
 ### Blood Loss Detection
@@ -234,8 +237,7 @@ Blood (raw)  → Blood Level → Overlay
 
 ### Widget System
 
-- Searches for `ingame_hud` widget in workspace
-- Falls back to workspace if HUD not found
+- Creates one fullscreen ImageWidget per effect directly on the workspace (negative z-order, ignorepointer)
 - Sets alpha transparency (0.0 = invisible, 1.0 = opaque)
 - Native DayZ widget system (no sFramework needed)
 
@@ -245,11 +247,16 @@ Blood (raw)  → Blood Level → Overlay
 DME_Cold/
 ├── config.cpp                              # DayZ mod configuration
 ├── mod.cpp                                 # Mod metadata
+├── stringtable.csv                         # Keybind labels
+├── dme_cold_admins.json.example            # Admin list template
 ├── README.md                               # This file
+│
+├── Data/
+│   └── Inputs.xml                          # Admin reload keybind (Numpad 8)
 │
 ├── GUI/
 │   ├── layouts/
-│   │   └── frost_overlay.layout            # UI layout (unused - manual widget creation)
+│   │   └── debug_overlay.layout            # Debug text panel (frost overlay debug)
 │   └── textures/
 │       ├── Freeze1.paa                     # Frost overlay level 1 (lightest)
 │       ├── Freeze2.paa                     # Frost overlay level 2
@@ -262,9 +269,7 @@ DME_Cold/
 │       ├── toxic2.paa                      # Toxic overlay level 2
 │       ├── toxic3.paa                      # Toxic overlay level 3
 │       ├── toxic4.paa                      # Toxic overlay level 4
-│       ├── toxic5.paa                      # Toxic overlay level 5
-│       ├── toxic6.paa                      # Toxic overlay level 6
-│       ├── toxic7.paa                      # Toxic overlay level 7 (heaviest)
+│       ├── toxic5.paa                      # Toxic overlay level 5 (heaviest)
 │       ├── blood1.paa                      # Blood overlay level 1 (lightest red)
 │       ├── blood2.paa                      # Blood overlay level 2
 │       ├── blood3.paa                      # Blood overlay level 3
@@ -279,15 +284,16 @@ DME_Cold/
     │   ├── A_DME_BloodOverlay.c            # Blood loss overlay widget logic
     │   ├── A_DME_ColdFrostOverlay.c        # Frost overlay widget logic
     │   ├── A_DME_ToxicOverlay.c            # Toxic overlay widget logic
-    │   ├── DME_Cold.c                      # Module registration
+    │   ├── DME_Cold.c                      # Module entry comment
+    │   ├── DME_ColdAdminConfig.c           # Admin list (reload permission)
     │   ├── DME_ColdConfig.c                # Configuration management & RPC serialization
     │   └── DME_ColdRPC.c                   # RPC constants for server-client sync
     │
     ├── 4_World/                            # World-level scripts
-    │   ├── B_DME_ColdManager.c             # Manager singleton
-    │   ├── DME_Cold.c                      # Module registration
-    │   ├── DME_ColdPlayerClient.c          # Player integration (stub)
-    │   └── DME_ColdRPCHandler.c            # Receives config RPC from server
+    │   ├── DME_Cold.c                      # Module entry comment
+    │   ├── DME_ColdPlayerStats.c           # Server -> client stat sync (HeatComfort, Toxicity, Blood)
+    │   ├── DME_ColdReloadHandler.c         # Reload request bridge to MissionServer
+    │   └── DME_ColdRPCHandler.c            # Receives config/stat RPCs
     │
     └── 5_Mission/                          # Mission-level scripts (loads last)
         ├── DME_Cold.c                      # Module registration
@@ -297,7 +303,7 @@ DME_Cold/
 
 ## Performance
 
-- **Minimal Server Load**: Only sends config once per player connect
+- **Minimal Server Load**: Config once per connect; 3 floats per player only when stats change (checked every 1 s, resent at least every 10 s)
 - **Client-Side Rendering**: All overlay logic runs on client
 - **Efficient Updates**: Only updates visible overlay, no tick when alpha=0
 - **Minimal Dependencies**: Pure DayZ native code, no external frameworks
@@ -337,7 +343,8 @@ DME_Cold/
 | Frost shows when warm | Check HeatComfort values in debug log, may need to adjust thresholds |
 | Always same frost image | Make sure Freeze1-7.paa exist in GUI/textures/ |
 | Overlay blocks UI | Check Z-order in CreateOverlay(), should be negative |
-| Config changes not applied | Restart server (config syncs on player connect) |
+| Config changes not applied | Admins press Numpad 8 (reload + broadcast), otherwise restart the server |
+| Frost/toxic only with DebugForce | Server and client must run the same mod version (stat sync RPC) |
 | Transitions too fast/slow | Adjust TransitionSpeed in config (lower = slower) |
 
 ## Credits
@@ -352,6 +359,7 @@ MIT License - See LICENSE file for details
 
 ## Version History
 
+- **v2.5** (2026-09-29): DayZ 1.29/1.30 update (`g_Game`, `JsonFileLoader.LoadFile/SaveFile`), server→client stat sync (frost/toxic never reacted in multiplayer, HeatComfort range fixed to -1..1), keybind registered via `inputs=`, valid debug layout, admin check accepts Steam64
 - **v2.4** (2025-12-15): Added Blood loss overlay (7 levels, non-linear thresholds)
 - **v2.3** (2025-12-15): Added Toxicity overlay for toxic zones (7 levels)
 - **v2.2** (2025-12-15): Fixed HeatComfort/HeatBuffer system, smooth float-based frost transitions
