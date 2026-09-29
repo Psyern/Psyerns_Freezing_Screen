@@ -16,7 +16,7 @@ modded class MissionServer
 		Print("[DME_Cold] ======== SERVER MISSION START ========");
 
 		// Register reload handler callback
-		DME_ColdReloadHandler.GetOnReloadRequest().Insert(OnReloadRequestCallback);
+		DME_ColdReloadHandler.GetOnReloadRequest().Insert(DME_OnReloadRequestCallback);
 		Print("[DME_Cold] Server: Reload handler registered");
 
 		// Load config on server
@@ -40,7 +40,7 @@ modded class MissionServer
 	 */
 	override void OnMissionFinish()
 	{
-		DME_ColdReloadHandler.GetOnReloadRequest().Remove(OnReloadRequestCallback);
+		DME_ColdReloadHandler.GetOnReloadRequest().Remove(DME_OnReloadRequestCallback);
 
 		super.OnMissionFinish();
 	}
@@ -48,9 +48,9 @@ modded class MissionServer
 	/**
 	 * Callback when a reload request is received from a client
 	 */
-	void OnReloadRequestCallback(PlayerBase player, PlayerIdentity identity)
+	void DME_OnReloadRequestCallback(PlayerBase player, PlayerIdentity identity)
 	{
-		HandleReloadRequest(player, identity);
+		DME_HandleReloadRequest(player, identity);
 	}
 
 	/**
@@ -64,13 +64,13 @@ modded class MissionServer
 			return;
 
 		// Send config to this player
-		SendConfigToClient(player, identity);
+		DME_SendConfigToClient(player, identity);
 	}
 
 	/**
 	 * Send the config to a specific client
 	 */
-	void SendConfigToClient(PlayerBase player, PlayerIdentity identity)
+	void DME_SendConfigToClient(PlayerBase player, PlayerIdentity identity)
 	{
 		if (!player || !identity)
 			return;
@@ -95,7 +95,7 @@ modded class MissionServer
 	/**
 	 * Send config to all connected players (useful for config reload)
 	 */
-	void SendConfigToAllClients()
+	void DME_SendConfigToAllClients()
 	{
 		DME_ColdConfig config = DME_ColdConfig.GetInstance();
 		if (!config)
@@ -128,7 +128,7 @@ modded class MissionServer
 	/**
 	 * Handle admin reload request from client
 	 */
-	void HandleReloadRequest(PlayerBase player, PlayerIdentity identity)
+	void DME_HandleReloadRequest(PlayerBase player, PlayerIdentity identity)
 	{
 		if (!player || !identity)
 			return;
@@ -143,7 +143,7 @@ modded class MissionServer
 		if (!adminConfig || !adminConfig.IsPlayerAdmin(identity))
 		{
 			Print("[DME_Cold] Server: Player " + playerName + " is NOT an admin - request denied!");
-			SendReloadResponse(player, identity, false, "You are not an admin");
+			DME_SendReloadResponse(player, identity, false, "You are not an admin");
 			return;
 		}
 
@@ -153,10 +153,10 @@ modded class MissionServer
 		DME_ColdConfig.ReloadConfigFromFile();
 
 		// Broadcast new config to all clients
-		SendConfigToAllClients();
+		DME_SendConfigToAllClients();
 
 		// Send success response
-		SendReloadResponse(player, identity, true, "Config reloaded and synced to all players");
+		DME_SendReloadResponse(player, identity, true, "Config reloaded and synced to all players");
 
 		Print("[DME_Cold] Server: Config reload complete!");
 	}
@@ -164,7 +164,7 @@ modded class MissionServer
 	/**
 	 * Send reload response to client
 	 */
-	void SendReloadResponse(PlayerBase player, PlayerIdentity identity, bool success, string message)
+	void DME_SendReloadResponse(PlayerBase player, PlayerIdentity identity, bool success, string message)
 	{
 		if (!player || !identity)
 			return;

@@ -60,7 +60,7 @@ modded class MissionGameplay
 		Print("[DME_Cold] ======== MISSION START COMPLETE ========");
 	}
 
-	protected void InitMissionOverlay()
+	protected void DME_InitMissionOverlay()
 	{
 		if (m_DME_ColdMissionOverlayInitialized)
 			return;
@@ -118,7 +118,7 @@ modded class MissionGameplay
 		Print("[DME_Cold] ======== MISSION OVERLAY INITIALIZED ========");
 	}
 
-	protected void InitToxicOverlay()
+	protected void DME_InitToxicOverlay()
 	{
 		if (m_DME_ToxicOverlayInitialized)
 			return;
@@ -167,7 +167,7 @@ modded class MissionGameplay
 		Print("[DME_Cold] ======== TOXIC OVERLAY INITIALIZED ========");
 	}
 
-	protected void InitBloodOverlay()
+	protected void DME_InitBloodOverlay()
 	{
 		if (m_DME_BloodOverlayInitialized)
 			return;
@@ -228,7 +228,7 @@ modded class MissionGameplay
 		{
 			if (m_DME_ReloadInput.LocalPress())
 			{
-				OnDME_ReloadKeyPressed();
+				DME_OnReloadKeyPressed();
 			}
 		}
 
@@ -247,19 +247,19 @@ modded class MissionGameplay
 		// Try to initialize overlay if not done
 		if (!m_DME_ColdMissionOverlayInitialized)
 		{
-			InitMissionOverlay();
+			DME_InitMissionOverlay();
 		}
 
 		// Try to initialize toxic overlay if not done
 		if (!m_DME_ToxicOverlayInitialized)
 		{
-			InitToxicOverlay();
+			DME_InitToxicOverlay();
 		}
 
 		// Try to initialize blood overlay if not done
 		if (!m_DME_BloodOverlayInitialized)
 		{
-			InitBloodOverlay();
+			DME_InitBloodOverlay();
 		}
 
 		// Update overlays if initialized
@@ -366,7 +366,7 @@ modded class MissionGameplay
 	/**
 	 * Called when admin presses the reload keybind
 	 */
-	protected void OnDME_ReloadKeyPressed()
+	protected void DME_OnReloadKeyPressed()
 	{
 		Print("[DME_Cold] Client: Admin reload key pressed (Numpad 8)");
 
@@ -383,20 +383,5 @@ modded class MissionGameplay
 		// Send RPC to server
 		Param1<bool> params = new Param1<bool>(true);
 		g_Game.RPCSingleParam(player, DME_COLD_RPC_RELOAD_REQUEST, params, true);
-	}
-
-	/**
-	 * Called when server responds to reload request
-	 */
-	void OnReloadResponse(bool success, string message)
-	{
-		if (success)
-		{
-			Print("[DME_Cold] Client: Config reloaded successfully - " + message);
-		}
-		else
-		{
-			Print("[DME_Cold] Client: Config reload failed - " + message);
-		}
 	}
 }

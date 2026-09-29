@@ -21,15 +21,3 @@ const int DME_COLD_RPC_SYNC_STATS = 0x444D4533; // "DME3" in hex
 // Stat sync timing (seconds): check interval and forced resend interval
 const float DME_COLD_STAT_SYNC_INTERVAL = 1.0;
 const float DME_COLD_STAT_SYNC_FORCE_INTERVAL = 10.0;
-
-class DME_ColdRPC
-{
-	/**
-	 * Register RPC handlers - call this on both client and server
-	 */
-	static void RegisterRPCs()
-	{
-		// RPC handlers are registered automatically via GetRPCMin/GetRPCMax
-		Print("[DME_Cold] RPC system initialized");
-	}
-}
