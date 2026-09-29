@@ -20,6 +20,10 @@ modded class MissionGameplay
     protected UAInput m_DME_ReloadInput;
     protected bool m_DME_InputInitialized = false;
     
+    // Debug log timer and last applied config sync (to re-init overlays after an admin reload)
+    protected float m_DME_DebugTimer;
+    protected int m_DME_LastConfigSyncCount;
+    
     /**
      * Called when the mission initializes
      */
@@ -228,6 +232,18 @@ modded class MissionGameplay
             }
         }
         
+        // Config was (re)synced: re-evaluate overlays that were skipped because their effect was disabled
+        if (m_DME_LastConfigSyncCount != DME_ColdConfig.GetSyncCount())
+        {
+            m_DME_LastConfigSyncCount = DME_ColdConfig.GetSyncCount();
+            if (!m_DME_ColdMissionOverlay)
+                m_DME_ColdMissionOverlayInitialized = false;
+            if (!m_DME_ToxicOverlay)
+                m_DME_ToxicOverlayInitialized = false;
+            if (!m_DME_BloodOverlay)
+                m_DME_BloodOverlayInitialized = false;
+        }
+        
         // Try to initialize overlay if not done
         if (!m_DME_ColdMissionOverlayInitialized)
         {
@@ -251,79 +267,35 @@ modded class MissionGameplay
         if (player)
         {
             int heatStage = player.GetHeatBufferStage();
-            float heatComfort = 0.0;
-            float heatBufferRaw = 0.0; // HeatBuffer: -30 to +30
-            float heatComfortRaw = -999.0; // HeatComfort: probably similar range
+            float heatComfort = 0.0; // HeatComfort: -1.0 (freezing) .. 1.0 (hot)
+            float heatBufferRaw = 0.0; // HeatBuffer: -30 to +30 (synced stat)
+            float heatComfortRaw = 0.0;
             float toxicityRaw = 0.0; // Toxicity: 0-100
             float bloodRaw = 5000.0; // Blood: 0-5000 (5000 = full)
-            float bloodValueDebug = 0.0; // Debug: original GetHealth value
+            float bloodValueDebug = 5000.0;
             
-            // Get HeatBuffer (-30 to +30, changes quickly near heat sources)
+            // HeatBuffer is a synced stat and can be read directly
             PlayerStat<float> heatBufferStat = player.GetStatHeatBuffer();
             if (heatBufferStat)
             {
                 heatBufferRaw = heatBufferStat.Get();
             }
             
-            // Get HeatComfort (changes slowly, the "felt" temperature)
-            // This is the value we should use for the frost effect!
-            PlayerStat<float> heatComfortStat = player.GetStatHeatComfort();
-            if (heatComfortStat)
+            // HeatComfort, Toxicity and Blood are not available on the client - they are
+            // sent by the server (see DME_ColdPlayerStats.c). Until the first sync arrives
+            // the neutral defaults above are used.
+            if (player.DME_HasSyncedStats())
             {
-                heatComfortRaw = heatComfortStat.Get();
+                heatComfortRaw = player.DME_GetSyncedHeatComfort();
+                heatComfort = Math.Clamp(heatComfortRaw, -1.0, 1.0);
+                toxicityRaw = player.DME_GetSyncedToxicity();
+                bloodValueDebug = player.DME_GetSyncedBlood();
                 
-                // HeatComfort range appears to be negative (cold) to positive (warm)
-                // We need to normalize this to our expected -1.0 to +1.0 range
-                // Based on DayZ code: values are likely similar to HeatBuffer (-30 to +30)
-                // Normalize: divide by 30 to get -1 to +1 range
-                // Negative = cold (frost), 0 = neutral, Positive = warm (no frost)
-                heatComfort = heatComfortRaw / 30.0;
-                heatComfort = Math.Clamp(heatComfort, -1.0, 1.0);
-            }
-            else
-            {
-                // Fallback to HeatStage if HeatComfort stat not available
-                // HeatStage: 0=freezing, 1=cold, 2=neutral, 3=warm, 4=hot
-                switch (heatStage)
+                // Invalid, zero or negative blood (player not fully loaded) counts as full blood
+                if (bloodValueDebug > 0)
                 {
-                    case 0: heatComfort = -1.0; break;  // Freezing
-                    case 1: heatComfort = -0.5; break;  // Cold
-                    case 2: heatComfort = 0.0; break;   // Neutral
-                    case 3: heatComfort = 0.5; break;   // Warm
-                    default: heatComfort = 1.0; break;  // Hot
+                    bloodRaw = Math.Clamp(bloodValueDebug, 0.0, 5000.0);
                 }
-            }
-            
-            // Get Toxicity stat (0-100, contamination level in toxic zones)
-            PlayerStat<float> toxicityStat = player.GetStatToxicity();
-            if (toxicityStat)
-            {
-                toxicityRaw = toxicityStat.Get();
-            }
-            
-            // Get Blood stat (0-5000, 5000 = full blood)
-            // DayZ uses GetHealth("", "Blood") or GetHealth("GlobalHealth", "Blood")
-            // Try both methods to ensure we get a valid value
-            float bloodValue = player.GetHealth("", "Blood");
-            bloodValueDebug = bloodValue; // Store original for debug
-            
-            // Validate the blood value
-            // DayZ blood range is 0-5000, default is 5000 (full)
-            if (bloodValue > 0 && bloodValue <= 5000)
-            {
-                // Valid blood value in expected range
-                bloodRaw = bloodValue;
-            }
-            else if (bloodValue > 5000)
-            {
-                // Value exceeds max, clamp it
-                bloodRaw = 5000.0;
-            }
-            else
-            {
-                // Invalid, zero, or negative - assume full blood
-                // This handles cases where player hasn't fully loaded yet
-                bloodRaw = 5000.0;
             }
             
             // Update frost overlay with heat stage and raw values for debug display
@@ -348,9 +320,8 @@ modded class MissionGameplay
             DME_ColdConfig config = DME_ColdConfig.GetInstance();
             if (config && config.DebugEnabled)
             {
-                static float debugTimer = 0;
-                debugTimer += timeslice;
-                if (debugTimer >= 2.0)
+                m_DME_DebugTimer += timeslice;
+                if (m_DME_DebugTimer >= 2.0)
                 {
                     // Get current overlay states
                     float frostLevel = 0;
@@ -386,7 +357,7 @@ modded class MissionGameplay
                     Print("[DME_Cold]   Blood:  Level=" + bloodLevel.ToString() + " Alpha=" + bloodAlpha.ToString() + " (Enabled=" + config.EnableBloodEffect.ToString() + ")");
                     Print("[DME_Cold] ==================================");
                     
-                    debugTimer = 0;
+                    m_DME_DebugTimer = 0;
                 }
             }
         }
@@ -410,7 +381,7 @@ modded class MissionGameplay
         Print("[DME_Cold] Client: Sending reload request to server...");
         
         // Send RPC to server
-        auto params = new Param1<bool>(true);
+        Param1<bool> params = new Param1<bool>(true);
         g_Game.RPCSingleParam(player, DME_COLD_RPC_RELOAD_REQUEST, params, true);
     }
     

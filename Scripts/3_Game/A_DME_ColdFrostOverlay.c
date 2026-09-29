@@ -206,7 +206,8 @@ class DME_ColdFrostOverlay
         
         // Use SetScreenSize and SetScreenPos for proper screen coverage
         // This should stretch the image to fill the screen
-        int screenW, screenH;
+        int screenW;
+        int screenH;
         GetScreenSize(screenW, screenH);
         
         m_FrostImage.SetScreenSize(screenW, screenH);
@@ -272,6 +273,10 @@ class DME_ColdFrostOverlay
         DME_ColdConfig config = DME_ColdConfig.GetInstance();
         if (!config)
             return;
+        
+        // Hide the debug widget when debug was disabled (e.g. by an admin config reload)
+        if (!config.DebugEnabled && m_DebugWidget)
+            m_DebugWidget.Show(false);
         
         // Check if effect is enabled
         if (!config.EnableFrostEffect)
@@ -414,7 +419,7 @@ class DME_ColdFrostOverlay
             return;
         
         // Convert float alpha (0.0-1.0) to int (0-255)
-        int alphaInt = (int)(m_CurrentAlpha * 255.0);
+        int alphaInt = Math.Round(m_CurrentAlpha * 255.0);
         
         // Use SetColor with ARGB - this is more reliable than SetAlpha
         m_FrostImage.SetColor(ARGB(alphaInt, 255, 255, 255));

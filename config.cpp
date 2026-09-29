@@ -26,6 +26,7 @@ class CfgMods
         extra = 0;
         type = "mod";
         
+        inputs = "DME_Cold/Data/Inputs.xml";
         dependencies[] = {"Game", "World", "Mission"};
         
         class defs

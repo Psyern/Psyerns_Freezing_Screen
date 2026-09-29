@@ -1,15 +1,40 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<root>
-	<window name="DebugRoot" type="Window" moveable="0" flags="visible nofocus ignorepointer vcenter hcenter">
-		<widget name="DebugTextPanel" type="PanelWidget" color="0 0 0 150" flags="visible ignorepointer">
-			<rt_widget name="DebugText" type="RichTextWidget" color="0 255 0 255" font="gui/fonts/metron/metron.fnt" flags="visible ignorepointer nowrap">
-				<size x="0.4" y="0.15" />
-				<position x="0.01" y="0.01" />
-			</rt_widget>
-			<size x="0.42" y="0.17" />
-			<position x="0.005" y="0.005" />
-		</widget>
-		<size x="0.45" y="0.20" />
-		<position x="0.0" y="0.0" />
-	</window>
-</root>
+FrameWidgetClass DebugRoot {
+ ignorepointer 1
+ position 8 8
+ size 0.5 32
+ hexactpos 1
+ vexactpos 1
+ hexactsize 0
+ vexactsize 1
+ priority 100
+ {
+  PanelWidgetClass DebugTextPanel {
+   ignorepointer 1
+   color 0 0 0 0.6
+   position 0 0
+   size 1 1
+   hexactpos 0
+   vexactpos 0
+   hexactsize 0
+   vexactsize 0
+   style rover_sim_colorable
+   {
+    RichTextWidgetClass DebugText {
+     ignorepointer 1
+     color 0 1 0 1
+     position 6 0
+     size 0.98 1
+     hexactpos 1
+     vexactpos 0
+     hexactsize 0
+     vexactsize 0
+     text "DME_Cold Debug"
+     font "gui/fonts/sdf_MetronBook24"
+     "exact text" 1
+     "exact text size" 16
+     "text valign" center
+    }
+   }
+  }
+ }
+}

@@ -2,10 +2,10 @@
 <modded_inputs>
 	<inputs>
 		<actions>
-			<input name="UADMEColdReload" loc="Reload Config (Admin)" />
+			<input name="UADMEColdReload" loc="STR_DME_COLD_RELOAD" />
 		</actions>
 		
-		<sorting name="dmecold" loc="DME Cold">
+		<sorting name="dmecold" loc="STR_DME_COLD_GROUP">
 			<input name="UADMEColdReload" />
 		</sorting>
 	</inputs>

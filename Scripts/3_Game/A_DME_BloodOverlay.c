@@ -92,7 +92,8 @@ class DME_BloodOverlay
         }
         
         // Set screen size
-        int screenW, screenH;
+        int screenW;
+        int screenH;
         GetScreenSize(screenW, screenH);
         
         m_BloodImage.SetScreenSize(screenW, screenH);
@@ -322,7 +323,7 @@ class DME_BloodOverlay
             return;
         
         // Convert float alpha (0.0-1.0) to int (0-255)
-        int alphaInt = (int)(m_CurrentAlpha * 255.0);
+        int alphaInt = Math.Round(m_CurrentAlpha * 255.0);
         
         // Use SetColor with ARGB
         m_BloodImage.SetColor(ARGB(alphaInt, 255, 255, 255));

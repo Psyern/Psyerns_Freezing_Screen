@@ -95,12 +95,15 @@ class DME_ColdAdminConfig
 	}
 	
 	// Check if a player is an admin by PlayerIdentity
+	// Accepts the Steam64 ID (GetPlainId, as documented in the example file) and the BI GUID (GetId)
 	bool IsPlayerAdmin(PlayerIdentity identity)
 	{
 		if (!identity)
 			return false;
 		
-		string guid = identity.GetId();
-		return IsAdmin(guid);
+		if (IsAdmin(identity.GetPlainId()))
+			return true;
+		
+		return IsAdmin(identity.GetId());
 	}
 };

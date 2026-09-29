@@ -96,6 +96,9 @@ class DME_ColdConfig
     // Flag to track if config has been synced from server
     private static bool s_ConfigSynced = false;
     
+    // Incremented every time a config from the server is applied (client)
+    private static int s_SyncCount = 0;
+    
     /**
      * Get the singleton instance
      * On SERVER: loads from file if not loaded
@@ -129,6 +132,14 @@ class DME_ColdConfig
     }
     
     /**
+     * Number of configs applied from the server (client-side), changes after an admin reload
+     */
+    static int GetSyncCount()
+    {
+        return s_SyncCount;
+    }
+    
+    /**
      * Apply synced config from server (called on client when RPC received)
      */
     static void ApplySyncedConfig(DME_ColdConfig syncedConfig)
@@ -138,6 +149,7 @@ class DME_ColdConfig
         
         s_Instance = syncedConfig;
         s_ConfigSynced = true;
+        s_SyncCount++;
         
         Print("[DME_Cold] Client: Config synced from server!");
         Print("[DME_Cold]   EnableFrostEffect: " + s_Instance.EnableFrostEffect.ToString());

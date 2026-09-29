@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<layoutset>
-  <widget name="FrostOverlayRoot" type="frame" pos_x="0" pos_y="0" size_x="1" size_y="1" halign="left" valign="top" hexactpos="0" vexactpos="0" hexactsize="0" vexactsize="0">
-    <widget name="FrostImage" type="image" pos_x="0" pos_y="0" size_x="1" size_y="1" halign="stretch" valign="stretch" hexactpos="0" vexactpos="0" hexactsize="0" vexactsize="0" alpha="0" flags="256" mode="stretch"/>
-  </widget>
-</layoutset>

@@ -36,6 +36,16 @@ modded class MissionServer
     }
     
     /**
+     * Called when the mission ends on SERVER
+     */
+    override void OnMissionFinish()
+    {
+        DME_ColdReloadHandler.GetOnReloadRequest().Remove(OnReloadRequestCallback);
+        
+        super.OnMissionFinish();
+    }
+    
+    /**
      * Callback when a reload request is received from a client
      */
     void OnReloadRequestCallback(PlayerBase player, PlayerIdentity identity)
@@ -126,11 +136,11 @@ modded class MissionServer
         string playerName = identity.GetName();
         string playerGUID = identity.GetId();
         
-        Print("[DME_Cold] Server: Reload request from " + playerName + " (GUID: " + playerGUID + ")");
+        Print("[DME_Cold] Server: Reload request from " + playerName + " (GUID: " + playerGUID + ", Steam64: " + identity.GetPlainId() + ")");
         
         // Check if player is admin
-        ref DME_ColdAdminConfig adminConfig = DME_ColdAdminConfig.Load();
-        if (!adminConfig || !adminConfig.IsAdmin(playerGUID))
+        DME_ColdAdminConfig adminConfig = DME_ColdAdminConfig.Load();
+        if (!adminConfig || !adminConfig.IsPlayerAdmin(identity))
         {
             Print("[DME_Cold] Server: Player " + playerName + " is NOT an admin - request denied!");
             SendReloadResponse(player, identity, false, "You are not an admin");
@@ -159,7 +169,7 @@ modded class MissionServer
         if (!player || !identity)
             return;
         
-        auto params = new Param2<bool, string>(success, message);
+        Param2<bool, string> params = new Param2<bool, string>(success, message);
         g_Game.RPCSingleParam(player, DME_COLD_RPC_RELOAD_RESPONSE, params, true, identity);
     }
 }

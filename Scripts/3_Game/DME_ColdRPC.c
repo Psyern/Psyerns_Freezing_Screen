@@ -15,6 +15,13 @@ const int DME_COLD_RPC_RELOAD_REQUEST = 0x444D4531; // "DME1" in hex
 // RPC ID for admin reload response (server -> client)
 const int DME_COLD_RPC_RELOAD_RESPONSE = 0x444D4532; // "DME2" in hex
 
+// RPC ID for player stat sync (server -> owning client): HeatComfort, Toxicity, Blood
+const int DME_COLD_RPC_SYNC_STATS = 0x444D4533; // "DME3" in hex
+
+// Stat sync timing (seconds): check interval and forced resend interval
+const float DME_COLD_STAT_SYNC_INTERVAL = 1.0;
+const float DME_COLD_STAT_SYNC_FORCE_INTERVAL = 10.0;
+
 class DME_ColdRPC
 {
     /**
