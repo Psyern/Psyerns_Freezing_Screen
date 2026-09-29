@@ -18,13 +18,13 @@ modded class PlayerBase
         
         // SERVER: Handle reload request from admin client
         // Note: We handle this by calling a static method that the MissionServer registers
-        if (GetGame().IsServer())
+        if (g_Game && g_Game.IsServer())
         {
             if (rpc_type == DME_COLD_RPC_RELOAD_REQUEST)
             {
                 Print("[DME_Cold] Server: Received reload request RPC from player");
                 // The actual handling is done via OnRPC in MissionServer
-                // We just pass it through - MissionServer will catch this via GetGame().GetMission()
+                // We just pass it through - MissionServer will catch this via g_Game.GetMission()
                 DME_ColdReloadHandler.HandleRequest(this, sender);
             }
             return;

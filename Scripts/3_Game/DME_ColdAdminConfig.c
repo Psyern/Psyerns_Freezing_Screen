@@ -21,21 +21,27 @@ class DME_ColdAdminConfig
 	}
 	
 	// Load admin config from JSON file
-	static ref DME_ColdAdminConfig Load()
+	static DME_ColdAdminConfig Load()
 	{
-		ref DME_ColdAdminConfig config;
+		DME_ColdAdminConfig config = new DME_ColdAdminConfig();
 		string path = GetConfigPath();
 		
 		if (FileExist(path))
 		{
 			Print("[DME_Cold] Loading admin config from: " + path);
-			JsonFileLoader<DME_ColdAdminConfig>.JsonLoadFile(path, config);
-			
-			if (config)
+			string loadError;
+			if (JsonFileLoader<DME_ColdAdminConfig>.LoadFile(path, config, loadError) && config)
 			{
-				Print("[DME_Cold] Admin config loaded with " + config.AdminGUIDs.Count() + " admins");
+				if (!config.AdminGUIDs)
+					config.AdminGUIDs = new array<string>();
+				
+				Print("[DME_Cold] Admin config loaded with " + config.AdminGUIDs.Count().ToString() + " admins");
 				return config;
 			}
+			
+			// Keep the broken file untouched so the admin can fix it - nobody is admin until then
+			Print("[DME_Cold] ERROR: Failed to load admin config: " + loadError);
+			return new DME_ColdAdminConfig();
 		}
 		
 		// Create default config if not exists
@@ -54,13 +60,18 @@ class DME_ColdAdminConfig
 			MakeDirectory(GetFolderPath());
 		}
 		
-		JsonFileLoader<DME_ColdAdminConfig>.JsonSaveFile(GetConfigPath(), this);
+		string saveError;
+		if (!JsonFileLoader<DME_ColdAdminConfig>.SaveFile(GetConfigPath(), this, saveError))
+		{
+			Print("[DME_Cold] ERROR: Failed to save admin config: " + saveError);
+			return;
+		}
 		Print("[DME_Cold] Admin config saved to: " + GetConfigPath());
 	}
 	
-	static ref DME_ColdAdminConfig CreateDefaultConfig()
+	static DME_ColdAdminConfig CreateDefaultConfig()
 	{
-		ref DME_ColdAdminConfig config = new DME_ColdAdminConfig();
+		DME_ColdAdminConfig config = new DME_ColdAdminConfig();
 		
 		// Add example GUID (commented format)
 		config.AdminGUIDs.Insert("REPLACE_WITH_YOUR_STEAM64_ID");

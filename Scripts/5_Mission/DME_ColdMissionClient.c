@@ -28,7 +28,7 @@ modded class MissionGameplay
         super.OnInit();
         
         // Only on actual client, not server
-        if (GetGame().IsClient() && !GetGame().IsServer())
+        if (g_Game && g_Game.IsClient() && !g_Game.IsServer())
         {
             // Get the input action defined in inputs.xml
             m_DME_ReloadInput = GetUApi().GetInputByName("UADMEColdReload");
@@ -67,7 +67,7 @@ modded class MissionGameplay
             return; // Silent wait for config
         }
         
-        PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+        PlayerBase player = PlayerBase.Cast(g_Game.GetPlayer());
         if (!player)
         {
             return; // Silent wait - player will be available soon
@@ -125,7 +125,7 @@ modded class MissionGameplay
             return; // Silent wait for config
         }
         
-        PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+        PlayerBase player = PlayerBase.Cast(g_Game.GetPlayer());
         if (!player)
         {
             return; // Silent wait - player will be available soon
@@ -174,7 +174,7 @@ modded class MissionGameplay
             return; // Silent wait for config
         }
         
-        PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+        PlayerBase player = PlayerBase.Cast(g_Game.GetPlayer());
         if (!player)
         {
             return; // Silent wait - player will be available soon
@@ -247,7 +247,7 @@ modded class MissionGameplay
         }
         
         // Update overlays if initialized
-        PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+        PlayerBase player = PlayerBase.Cast(g_Game.GetPlayer());
         if (player)
         {
             int heatStage = player.GetHeatBufferStage();
@@ -400,7 +400,7 @@ modded class MissionGameplay
         Print("[DME_Cold] Client: Admin reload key pressed (Numpad 8)");
         
         // Get player
-        PlayerBase player = PlayerBase.Cast(GetGame().GetPlayer());
+        PlayerBase player = PlayerBase.Cast(g_Game.GetPlayer());
         if (!player)
         {
             Print("[DME_Cold] Client: No player found!");
@@ -411,7 +411,7 @@ modded class MissionGameplay
         
         // Send RPC to server
         auto params = new Param1<bool>(true);
-        GetGame().RPCSingleParam(player, DME_COLD_RPC_RELOAD_REQUEST, params, true);
+        g_Game.RPCSingleParam(player, DME_COLD_RPC_RELOAD_REQUEST, params, true);
     }
     
     /**

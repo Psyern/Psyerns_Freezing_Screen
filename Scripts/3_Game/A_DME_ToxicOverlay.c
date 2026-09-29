@@ -53,7 +53,10 @@ class DME_ToxicOverlay
         }
         
         // Get the workspace
-        WorkspaceWidget workspace = GetGame().GetWorkspace();
+        if (!g_Game)
+            return false;
+        
+        WorkspaceWidget workspace = g_Game.GetWorkspace();
         if (!workspace)
         {
             Print("[DME_Cold] ERROR: No workspace available for toxic overlay");

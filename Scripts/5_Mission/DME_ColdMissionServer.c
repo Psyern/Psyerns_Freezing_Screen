@@ -95,7 +95,7 @@ modded class MissionServer
         
         // Iterate all players and send config to each
         array<Man> players = new array<Man>();
-        GetGame().GetPlayers(players);
+        g_Game.GetPlayers(players);
         
         foreach (Man man : players)
         {
@@ -160,6 +160,6 @@ modded class MissionServer
             return;
         
         auto params = new Param2<bool, string>(success, message);
-        GetGame().RPCSingleParam(player, DME_COLD_RPC_RELOAD_RESPONSE, params, true, identity);
+        g_Game.RPCSingleParam(player, DME_COLD_RPC_RELOAD_RESPONSE, params, true, identity);
     }
 }

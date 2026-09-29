@@ -105,16 +105,15 @@ class DME_ColdConfig
     {
         if (!s_Instance)
         {
-            s_Instance = new DME_ColdConfig();
-            
             // Only load from file on server
-            if (GetGame().IsServer())
+            if (g_Game && g_Game.IsServer())
             {
-                s_Instance.Load();
+                s_Instance = LoadFromFile();
                 s_ConfigSynced = true; // Server always has valid config
             }
             else
             {
+                s_Instance = new DME_ColdConfig();
                 Print("[DME_Cold] Client: Using default config until server sync");
             }
         }
@@ -159,7 +158,7 @@ class DME_ColdConfig
      */
     static void ReloadConfigFromFile()
     {
-        if (!GetGame().IsServer())
+        if (!g_Game || !g_Game.IsServer())
         {
             Print("[DME_Cold] ReloadConfigFromFile can only be called on server!");
             return;
@@ -168,8 +167,7 @@ class DME_ColdConfig
         Print("[DME_Cold] Server: Reloading config from file...");
         
         // Create new instance and load from file
-        s_Instance = new DME_ColdConfig();
-        s_Instance.Load();
+        s_Instance = LoadFromFile();
         s_ConfigSynced = true;
         
         Print("[DME_Cold] Server: Config reloaded successfully!");
@@ -283,7 +281,7 @@ class DME_ColdConfig
      */
     static void Reload()
     {
-        if (!GetGame().IsServer())
+        if (!g_Game || !g_Game.IsServer())
         {
             Print("[DME_Cold] WARNING: Reload() called on client - ignored");
             return;
@@ -310,69 +308,75 @@ class DME_ColdConfig
     }
     
     /**
-     * Load the configuration from file
+     * Load the configuration from file (creates the default file if missing)
+     * JsonFileLoader.LoadFile uses an out parameter, so the loaded object is returned
+     * instead of filling "this".
      */
-    void Load()
+    static DME_ColdConfig LoadFromFile()
     {
-        string configDir = GetConfigDir();
         string configPath = GetConfigPath();
+        DME_ColdConfig config = new DME_ColdConfig();
         
         Print("[DME_Cold] Attempting to load config from: " + configPath);
         
-        // Create directory if it doesn't exist
-        if (!FileExist(configDir))
-        {
-            if (MakeDirectory(configDir))
-            {
-                Print("[DME_Cold] Created config directory: " + configDir);
-            }
-            else
-            {
-                Print("[DME_Cold] WARNING: Could not create config directory: " + configDir);
-            }
-        }
-        
-        // Check if config exists
         if (FileExist(configPath))
         {
             Print("[DME_Cold] Config file found, loading...");
-            JsonFileLoader<DME_ColdConfig>.JsonLoadFile(configPath, this);
-            Print("[DME_Cold] Configuration loaded from: " + configPath);
-            Print("[DME_Cold] LOADED CONFIG VALUES:");
-            Print("[DME_Cold]   EnableFrostEffect: " + EnableFrostEffect.ToString());
-            Print("[DME_Cold]   EnableToxicEffect: " + EnableToxicEffect.ToString());
-            Print("[DME_Cold]   EnableBloodEffect: " + EnableBloodEffect.ToString());
-            Print("[DME_Cold]   DebugEnabled: " + DebugEnabled.ToString());
-            Print("[DME_Cold]   DebugForceFrostLevel: " + DebugForceFrostLevel.ToString());
-            Print("[DME_Cold]   DebugForceToxicLevel: " + DebugForceToxicLevel.ToString());
-            Print("[DME_Cold]   DebugForceBloodLevel: " + DebugForceBloodLevel.ToString());
-            Print("[DME_Cold]   DebugLogTemperature: " + DebugLogTemperature.ToString());
-            Print("[DME_Cold]   TransitionSpeed: " + TransitionSpeed.ToString());
-            Print("[DME_Cold]   MinAlpha: " + MinAlpha.ToString());
-            Print("[DME_Cold]   MaxAlpha: " + MaxAlpha.ToString());
-            Print("[DME_Cold]   ToxicTransitionSpeed: " + ToxicTransitionSpeed.ToString());
-            Print("[DME_Cold]   ToxicMinAlpha: " + ToxicMinAlpha.ToString());
-            Print("[DME_Cold]   ToxicMaxAlpha: " + ToxicMaxAlpha.ToString());
-            Print("[DME_Cold]   BloodTransitionSpeed: " + BloodTransitionSpeed.ToString());
-            Print("[DME_Cold]   BloodMinAlpha: " + BloodMinAlpha.ToString());
-            Print("[DME_Cold]   BloodMaxAlpha: " + BloodMaxAlpha.ToString());
+            string loadError;
+            if (!JsonFileLoader<DME_ColdConfig>.LoadFile(configPath, config, loadError) || !config)
+            {
+                // Keep the broken file untouched so the admin can fix it
+                Print("[DME_Cold] ERROR: Failed to load config, using defaults: " + loadError);
+                config = new DME_ColdConfig();
+            }
+            else
+            {
+                Print("[DME_Cold] Configuration loaded from: " + configPath);
+                config.PrintValues();
+            }
         }
         else
         {
-            // Create default config
+            // Create default config - values already set by class initializers above
             Print("[DME_Cold] Config file not found, creating default...");
-            // Values already set by class initializers above
-            Save();
+            config.Save();
             Print("[DME_Cold] Default config saved");
         }
         
         // Log debug status
-        if (DebugEnabled)
+        if (config.DebugEnabled)
         {
             Print("[DME_Cold] ======== DEBUG MODE ENABLED ========");
             Print("[DME_Cold] If DebugForceFrostLevel is > 0, that level will be forced");
-            Print("[DME_Cold] Current forced level: " + DebugForceFrostLevel.ToString());
+            Print("[DME_Cold] Current forced level: " + config.DebugForceFrostLevel.ToString());
         }
+        
+        return config;
+    }
+    
+    /**
+     * Print the loaded config values to the log
+     */
+    void PrintValues()
+    {
+        Print("[DME_Cold] LOADED CONFIG VALUES:");
+        Print("[DME_Cold]   EnableFrostEffect: " + EnableFrostEffect.ToString());
+        Print("[DME_Cold]   EnableToxicEffect: " + EnableToxicEffect.ToString());
+        Print("[DME_Cold]   EnableBloodEffect: " + EnableBloodEffect.ToString());
+        Print("[DME_Cold]   DebugEnabled: " + DebugEnabled.ToString());
+        Print("[DME_Cold]   DebugForceFrostLevel: " + DebugForceFrostLevel.ToString());
+        Print("[DME_Cold]   DebugForceToxicLevel: " + DebugForceToxicLevel.ToString());
+        Print("[DME_Cold]   DebugForceBloodLevel: " + DebugForceBloodLevel.ToString());
+        Print("[DME_Cold]   DebugLogTemperature: " + DebugLogTemperature.ToString());
+        Print("[DME_Cold]   TransitionSpeed: " + TransitionSpeed.ToString());
+        Print("[DME_Cold]   MinAlpha: " + MinAlpha.ToString());
+        Print("[DME_Cold]   MaxAlpha: " + MaxAlpha.ToString());
+        Print("[DME_Cold]   ToxicTransitionSpeed: " + ToxicTransitionSpeed.ToString());
+        Print("[DME_Cold]   ToxicMinAlpha: " + ToxicMinAlpha.ToString());
+        Print("[DME_Cold]   ToxicMaxAlpha: " + ToxicMaxAlpha.ToString());
+        Print("[DME_Cold]   BloodTransitionSpeed: " + BloodTransitionSpeed.ToString());
+        Print("[DME_Cold]   BloodMinAlpha: " + BloodMinAlpha.ToString());
+        Print("[DME_Cold]   BloodMaxAlpha: " + BloodMaxAlpha.ToString());
     }
     
     /**
@@ -396,7 +400,12 @@ class DME_ColdConfig
             }
         }
         
-        JsonFileLoader<DME_ColdConfig>.JsonSaveFile(configPath, this);
+        string saveError;
+        if (!JsonFileLoader<DME_ColdConfig>.SaveFile(configPath, this, saveError))
+        {
+            Print("[DME_Cold] ERROR: Failed to save config: " + saveError);
+            return;
+        }
         Print("[DME_Cold] Configuration saved to: " + configPath);
     }
     

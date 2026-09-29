@@ -76,12 +76,15 @@ class DME_ColdFrostOverlay
         if (m_DebugWidget)
             return; // Already created
         
-        WorkspaceWidget workspace = GetGame().GetWorkspace();
+        if (!g_Game)
+            return;
+        
+        WorkspaceWidget workspace = g_Game.GetWorkspace();
         if (!workspace)
             return;
         
         // Try to load the debug layout
-        m_DebugWidget = GetGame().GetWorkspace().CreateWidgets("DME_Cold/GUI/layouts/debug_overlay.layout");
+        m_DebugWidget = workspace.CreateWidgets("DME_Cold/GUI/layouts/debug_overlay.layout");
         
         if (m_DebugWidget)
         {
@@ -165,7 +168,10 @@ class DME_ColdFrostOverlay
         }
         
         // Get the workspace
-        WorkspaceWidget workspace = GetGame().GetWorkspace();
+        if (!g_Game)
+            return false;
+        
+        WorkspaceWidget workspace = g_Game.GetWorkspace();
         if (!workspace)
         {
             Print("[DME_Cold] ERROR: No workspace available");
