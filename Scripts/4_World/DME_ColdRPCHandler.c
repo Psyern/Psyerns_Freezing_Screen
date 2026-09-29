@@ -42,7 +42,7 @@ modded class PlayerBase
 		if (rpc_type == DME_COLD_RPC_SYNC_CONFIG)
 		{
 			Print("[DME_Cold] Client: Received config sync RPC");
-			
+
 			// Create new config and read from RPC
 			DME_ColdConfig config = new DME_ColdConfig();
 			if (config.ReadFromParams(ctx))
@@ -69,7 +69,7 @@ modded class PlayerBase
 		else if (rpc_type == DME_COLD_RPC_RELOAD_RESPONSE)
 		{
 			Print("[DME_Cold] Client: Received reload response RPC");
-			
+
 			Param2<bool, string> response = new Param2<bool, string>(false, "");
 			if (ctx.Read(response))
 			{
